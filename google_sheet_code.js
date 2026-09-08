@@ -1,6 +1,6 @@
 /**
  * ==============================================================================
- * 💑 부부 공유 캘린더 - Google Apps Script 연동 코드 (v2 완벽 안정화)
+ * 💑 부부 공유 캘린더 - Google Apps Script 연동 코드 (v2.1 완벽 동기화)
  * ==============================================================================
  * 
  * [1분 설정 방법]
@@ -9,20 +9,22 @@
  * 3. 기존 코드를 모두 지우고 아래 코드를 그대로 붙여넣은 후 저장(💾)
  * 4. 우측 상단 파란색 [배포] -> [새 배포] 클릭
  *    - 유형: [웹 앱] (톱니바퀴 아이콘)
- *    - 설명: 부부 캘린더 연동
+ *    - 설명: 부부 캘린더 실시간 연동
  *    - 다음 사용자로 실행: [나 (내 계정)]
  *    - 액세스 권한이 있는 사용자: [모든 사용자 (Anyone)]  <-- ⭐ 필수!
- * 5. [배포] 클릭 후 발급된 "웹 앱 URL"을 복사하여 부부 캘린더 앱에 등록!
+ * 5. [배포] 클릭 후 발급된 "웹 앱 URL"을 복사하여 부부 캘린더 앱 [⚙️ 설정]에 등록!
  * ==============================================================================
  */
 
-const SHEET_NAME = 'Schedules';
+const SCHEDULE_SHEET_NAME = 'Schedules';
+const CONFIG_SHEET_NAME = 'Config';
 
-function getOrCreateSheet() {
+// 일정 시트 초기화 및 가져오기
+function getOrCreateScheduleSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
+  let sheet = ss.getSheetByName(SCHEDULE_SHEET_NAME);
   if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
+    sheet = ss.insertSheet(SCHEDULE_SHEET_NAME);
     sheet.appendRow(['id', 'title', 'date', 'allDay', 'startTime', 'endTime', 'assignee', 'category', 'completed', 'memo', 'updatedAt']);
     sheet.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#f3e8ff');
     sheet.setFrozenRows(1);
@@ -30,16 +32,28 @@ function getOrCreateSheet() {
   return sheet;
 }
 
-// GET 요청 처리 (일정 조회 및 쿼리 파라미터 저장 지원)
+// 설정/D-Day 시트 초기화 및 가져오기
+function getOrCreateConfigSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG_SHEET_NAME);
+    sheet.appendRow(['key', 'value', 'updatedAt']);
+    sheet.getRange(1, 1, 1, 3).setFontWeight('bold').setBackground('#fce7f3');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+// GET 요청 처리 (일정 및 D-Day 조회)
 function doGet(e) {
   try {
-    // 만약 GET으로 데이터를 넘겼을 경우 처리
     if (e.parameter && e.parameter.data) {
       return handleDataSync(e.parameter.data);
     }
 
-    const sheet = getOrCreateSheet();
-    const data = sheet.getDataRange().getValues();
+    const schSheet = getOrCreateScheduleSheet();
+    const data = schSheet.getDataRange().getValues();
     const schedules = [];
 
     for (let i = 1; i < data.length; i++) {
@@ -73,9 +87,22 @@ function doGet(e) {
       }
     }
 
+    // D-Day 설정값 읽기
+    const cfgSheet = getOrCreateConfigSheet();
+    const cfgData = cfgSheet.getDataRange().getValues();
+    let dday = { title: '결혼기념일', date: '2024-05-18' };
+    for (let i = 1; i < cfgData.length; i++) {
+      if (cfgData[i][0] === 'dday' && cfgData[i][1]) {
+        try {
+          dday = JSON.parse(cfgData[i][1]);
+        } catch(err) {}
+      }
+    }
+
     return ContentService.createTextOutput(JSON.stringify({
       status: 'success',
-      schedules: schedules
+      schedules: schedules,
+      dday: dday
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -108,18 +135,18 @@ function doPost(e) {
 
 // 시트에 데이터 저장 공통 함수
 function handleDataSync(rawJson) {
-  const sheet = getOrCreateSheet();
+  const schSheet = getOrCreateScheduleSheet();
   const parsed = JSON.parse(rawJson);
   const schedules = parsed.schedules || [];
+  const dday = parsed.dday;
   const updatedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
 
-  // 기존 데이터 지우기
-  const lastRow = sheet.getLastRow();
+  // 1. 기존 일정 지우고 새로 쓰기
+  const lastRow = schSheet.getLastRow();
   if (lastRow > 1) {
-    sheet.deleteRows(2, lastRow - 1);
+    schSheet.deleteRows(2, lastRow - 1);
   }
 
-  // 새 데이터 쓰기
   if (schedules.length > 0) {
     const rows = schedules.map(s => [
       s.id,
@@ -134,7 +161,17 @@ function handleDataSync(rawJson) {
       s.memo || '',
       updatedAt
     ]);
-    sheet.getRange(2, 1, rows.length, 11).setValues(rows);
+    schSheet.getRange(2, 1, rows.length, 11).setValues(rows);
+  }
+
+  // 2. D-Day 설정 저장
+  if (dday) {
+    const cfgSheet = getOrCreateConfigSheet();
+    const cfgLastRow = cfgSheet.getLastRow();
+    if (cfgLastRow > 1) {
+      cfgSheet.deleteRows(2, cfgLastRow - 1);
+    }
+    cfgSheet.appendRow(['dday', JSON.stringify(dday), updatedAt]);
   }
 
   return ContentService.createTextOutput(JSON.stringify({
