@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>우리 부부 공유 캘린더 💑 (구글 시트 연동)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            wife: {
+              light: '#fdf2f8',
+              DEFAULT: '#ec4899',
+              dark: '#db2777',
+              border: '#fbcfe8'
+            },
+            husband: {
+              light: '#eff6ff',
+              DEFAULT: '#3b82f6',
+              dark: '#2563eb',
+              border: '#bfdbfe'
+            },
+            couple: {
+              light: '#faf5ff',
+              DEFAULT: '#8b5cf6',
+              dark: '#7c3aed',
+              border: '#ddd6fe'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & Babel CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Pretendard Font -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+  <style>
+    body {
+      font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f8fafc;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    @keyframes spin-custom {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin-custom {
+      animation: spin-custom 1s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // --- 1. 대한민국 공휴일 데이터 (2024~2030 및 주요 대체공휴일 완벽 지원) ---
+    const KOREAN_HOLIDAYS = {
+      // 2024년
+      "2024-01-01": "신정",
+      "2024-02-09": "설날 연휴",
+      "2024-02-10": "설날",
+      "2024-02-11": "설날 연휴",
+      "2024-02-12": "대체공휴일",
+      "2024-03-01": "삼일절",
+      "2024-04-10": "제22대 총선",
+      "2024-05-05": "어린이날",
+      "2024-05-06": "대체공휴일",
+      "2024-05-15": "부처님오신날",
+      "2024-06-06": "현충일",
+      "2024-08-15": "광복절",
+      "2024-09-16": "추석 연휴",
+      "2024-09-17": "추석",
+      "2024-09-18": "추석 연휴",
+      "2024-10-01": "임시공휴일",
+      "2024-10-03": "개천절",
+      "2024-10-09": "한글날",
+      "2024-12-25": "성탄절",
+
+      // 2025년
+      "2025-01-01": "신정",
+      "2025-01-28": "설날 연휴",
+      "2025-01-29": "설날",
+      "2025-01-30": "설날 연휴",
+      "2025-03-01": "삼일절",
+      "2025-03-03": "대체공휴일",
+      "2025-05-05": "어린이날",
+      "2025-05-06": "부처님오신날",
+      "2025-06-06": "현충일",
+      "2025-08-15": "광복절",
+      "2025-10-03": "개천절",
+      "2025-10-05": "추석 연휴",
+      "2025-10-06": "추석",
+      "2025-10-07": "추석 연휴",
+      "2025-10-08": "대체공휴일",
+      "2025-10-09": "한글날",
+      "2025-12-25": "성탄절",
+
+      // 2026년
+      "2026-01-01": "신정",
+      "2026-02-16": "설날 연휴",
+      "2026-02-17": "설날",
+      "2026-02-18": "설날 연휴",
+      "2026-03-01": "삼일절",
+      "2026-03-02": "대체공휴일",
+      "2026-05-05": "어린이날",
+      "2026-05-24": "부처님오신날",
+      "2026-05-25": "대체공휴일",
+      "2026-06-03": "지방선거",
+      "2026-06-06": "현충일",
+      "2026-08-15": "광복절",
+      "2026-08-17": "대체공휴일",
+      "2026-09-24": "추석 연휴",
+      "2026-09-25": "추석",
+      "2026-09-26": "추석 연휴",
+      "2026-10-03": "개천절",
+      "2026-10-05": "대체공휴일",
+      "2026-10-09": "한글날",
+      "2026-12-25": "성탄절",
+
+      // 2027년
+      "2027-01-01": "신정",
+      "2027-02-06": "설날 연휴",
+      "2027-02-07": "설날",
+      "2027-02-08": "설날 연휴",
+      "2027-02-09": "대체공휴일",
+      "2027-03-01": "삼일절",
+      "2027-05-05": "어린이날",
+      "2027-05-13": "부처님오신날",
+      "2027-06-06": "현충일",
+      "2027-08-15": "광복절",
+      "2027-08-16": "대체공휴일",
+      "2027-09-14": "추석 연휴",
+      "2027-09-15": "추석",
+      "2027-09-16": "추석 연휴",
+      "2027-10-03": "개천절",
+      "2027-10-04": "대체공휴일",
+      "2027-10-09": "한글날",
+      "2027-10-11": "대체공휴일",
+      "2027-12-25": "성탄절",
+      "2027-12-27": "대체공휴일"
+    };
+
+    const getSolarHoliday = (year, month, day) => {
+      const key = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const solarRules = {
+        '01-01': '신정',
+        '03-01': '삼일절',
+        '05-05': '어린이날',
+        '06-06': '현충일',
+        '08-15': '광복절',
+        '10-03': '개천절',
+        '10-09': '한글날',
+        '12-25': '성탄절'
+      };
+      return solarRules[key] || null;
+    };
+
+    const getHolidayName = (year, month, day) => {
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      if (KOREAN_HOLIDAYS[dateStr]) {
+        return KOREAN_HOLIDAYS[dateStr];
+      }
+      return getSolarHoliday(year, month, day);
+    };
+
+    const getTodayString = () => {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+
+    // 초기 샘플 일정 데이터
+    const INITIAL_SCHEDULES = [
+      {
+        id: 'sch_1',
+        title: '주말 트레이더스 장보기 🛒',
+        date: getTodayString(),
+        allDay: false,
+        startTime: '14:00',
+        endTime: '15:30',
+        assignee: 'couple',
+        category: '장보기',
+        completed: false,
+        memo: '소고기, 올리브유, 세제 사기'
+      },
+      {
+        id: 'sch_2',
+        title: '필라테스 1:1 레슨',
+        date: getTodayString(),
+        allDay: false,
+        startTime: '10:30',
+        endTime: '11:30',
+        assignee: 'wife',
+        category: '운동',
+        completed: true,
+        memo: '코어 운동 위주'
+      },
+      {
+        id: 'sch_3',
+        title: '자동차 정기점검 및 세차',
+        date: getTodayString(),
+        allDay: false,
+        startTime: '16:00',
+        endTime: '17:30',
+        assignee: 'husband',
+        category: '집안일',
+        completed: false,
+        memo: '엔진오일 교체'
+      },
+      {
+        id: 'sch_4',
+        title: '결혼 기념일 저녁 식사 🥂',
+        date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0],
+        allDay: false,
+        startTime: '19:00',
+        endTime: '21:00',
+        assignee: 'couple',
+        category: '기념일',
+        completed: false,
+        memo: '레스토랑 예약 완료'
+      }
+    ];
+
+    function App() {
+      // 캘린더 상태
+      const [currentDate, setCurrentDate] = useState(new Date());
+      const [selectedDate, setSelectedDate] = useState(getTodayString());
+      
+      // 구글 시트 연동 설정 상태
+      const [sheetUrl, setSheetUrl] = useState(() => {
+        return localStorage.getItem('google_sheet_webapp_url') || '';
+      });
+      const [isSyncing, setIsSyncing] = useState(false);
+      const [lastSyncTime, setLastSyncTime] = useState(null);
+      const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'success' | 'error'
+      const [syncErrorMsg, setSyncErrorMsg] = useState('');
+
+      // 일정 데이터 상태
+      const [schedules, setSchedules] = useState(() => {
+        try {
+          const saved = localStorage.getItem('couple_schedules_v2');
+          return saved ? JSON.parse(saved) : INITIAL_SCHEDULES;
+        } catch(e) {
+          return INITIAL_SCHEDULES;
+        }
+      });
+
+      // 담당자 필터 ('all', 'wife', 'husband', 'couple')
+      const [filterAssignee, setFilterAssignee] = useState('all');
+
+      // 일정 등록/수정 모달 상태
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [editingSchedule, setEditingSchedule] = useState(null);
+      
+      // 모달 폼 필드
+      const [formTitle, setFormTitle] = useState('');
+      const [formDate, setFormDate] = useState(selectedDate);
+      const [formAllDay, setFormAllDay] = useState(false);
+      const [formStartTime, setFormStartTime] = useState('10:00');
+      const [formEndTime, setFormEndTime] = useState('11:00');
+      const [formAssignee, setFormAssignee] = useState('couple');
+      const [formCategory, setFormCategory] = useState('데이트');
+      const [formMemo, setFormMemo] = useState('');
+
+      // 구글 시트 설정 모달 상태
+      const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+      const [inputSheetUrl, setInputSheetUrl] = useState(sheetUrl);
+      const [copySuccess, setCopySuccess] = useState(false);
+
+      // LocalStorage 저장
+      useEffect(() => {
+        localStorage.setItem('couple_schedules_v2', JSON.stringify(schedules));
+      }, [schedules]);
+
+      // --- 구글 스프레드시트 동기화 로직 ---
+
+      // 1. 구글 시트에서 최신 일정 가져오기 (GET)
+      const fetchFromGoogleSheet = useCallback(async (urlToFetch = sheetUrl) => {
+        if (!urlToFetch || !urlToFetch.startsWith('http')) return;
+
+        setIsSyncing(true);
+        setSyncStatus('idle');
+        try {
+          const response = await fetch(urlToFetch);
+          const data = await response.json();
+
+          if (data && data.status === 'success' && Array.isArray(data.schedules)) {
+            setSchedules(data.schedules);
+            setSyncStatus('success');
+            setLastSyncTime(new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          } else {
+            throw new Error(data.message || '데이터 형식 오류');
+          }
+        } catch (err) {
+          console.error('Fetch error:', err);
+          setSyncStatus('error');
+          setSyncErrorMsg('구글 시트에서 데이터를 불러오지 못했습니다.');
+        } finally {
+          setIsSyncing(false);
+        }
+      }, [sheetUrl]);
+
+      // 2. 변경된 일정을 구글 시트로 전송 (POST)
+      const pushToGoogleSheet = async (newSchedules, urlToPush = sheetUrl) => {
+        if (!urlToPush || !urlToPush.startsWith('http')) return;
+
+        setIsSyncing(true);
+        try {
+          await fetch(urlToPush, {
+            method: 'POST',
+            mode: 'no-cors', // Apps Script 리다이렉트 대응
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              action: 'sync',
+              schedules: newSchedules
+            })
+          });
+
+          setSyncStatus('success');
+          setLastSyncTime(new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        } catch (err) {
+          console.error('Push error:', err);
+          setSyncStatus('error');
+          setSyncErrorMsg('구글 시트 저장 중 오류가 발생했습니다.');
+        } finally {
+          setIsSyncing(false);
+        }
+      };
+
+      // 앱 시작 시 및 포커스 시 자동 동기화
+      useEffect(() => {
+        if (sheetUrl) {
+          fetchFromGoogleSheet();
+        }
+
+        const handleFocus = () => {
+          if (sheetUrl) {
+            fetchFromGoogleSheet();
+          }
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+      }, [sheetUrl, fetchFromGoogleSheet]);
+
+      // 주기적 자동 동기화 (3분마다)
+      useEffect(() => {
+        if (!sheetUrl) return;
+        const interval = setInterval(() => {
+          fetchFromGoogleSheet();
+        }, 180000); // 3분
+        return () => clearInterval(interval);
+      }, [sheetUrl, fetchFromGoogleSheet]);
+
+      // 연/월 정보
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth() + 1;
+
+      const prevMonth = () => {
+        setCurrentDate(new Date(currentYear, currentMonth - 2, 1));
+      };
+      const nextMonth = () => {
+        setCurrentDate(new Date(currentYear, currentMonth, 1));
+      };
+      const goToToday = () => {
+        const today = new Date();
+        setCurrentDate(today);
+        setSelectedDate(getTodayString());
+      };
+
+      // 달력 그리드 계산
+      const calendarDays = useMemo(() => {
+        const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay(); // 0: 일요일
+        const lastDate = new Date(currentYear, currentMonth, 0).getDate();
+        const prevLastDate = new Date(currentYear, currentMonth - 1, 0).getDate();
+
+        const days = [];
+
+        // 이전 달 날짜들
+        for (let i = firstDay - 1; i >= 0; i--) {
+          const d = prevLastDate - i;
+          const prevMonthNum = currentMonth === 1 ? 12 : currentMonth - 1;
+          const prevYearNum = currentMonth === 1 ? currentYear - 1 : currentYear;
+          const dateStr = `${prevYearNum}-${String(prevMonthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          days.push({
+            dateStr,
+            day: d,
+            isCurrentMonth: false,
+            dayOfWeek: new Date(prevYearNum, prevMonthNum - 1, d).getDay(),
+            holiday: getHolidayName(prevYearNum, prevMonthNum, d)
+          });
+        }
+
+        // 이번 달 날짜들
+        for (let d = 1; d <= lastDate; d++) {
+          const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const dayOfWeek = new Date(currentYear, currentMonth - 1, d).getDay();
+          days.push({
+            dateStr,
+            day: d,
+            isCurrentMonth: true,
+            dayOfWeek,
+            holiday: getHolidayName(currentYear, currentMonth, d)
+          });
+        }
+
+        // 다음 달 날짜들
+        const totalSlots = days.length > 35 ? 42 : 35;
+        const remaining = totalSlots - days.length;
+        for (let d = 1; d <= remaining; d++) {
+          const nextMonthNum = currentMonth === 12 ? 1 : currentMonth + 1;
+          const nextYearNum = currentMonth === 12 ? currentYear + 1 : currentYear;
+          const dateStr = `${nextYearNum}-${String(nextMonthNum).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          days.push({
+            dateStr,
+            day: d,
+            isCurrentMonth: false,
+            dayOfWeek: new Date(nextYearNum, nextMonthNum - 1, d).getDay(),
+            holiday: getHolidayName(nextYearNum, nextMonthNum, d)
+          });
+        }
+
+        return days;
+      }, [currentYear, currentMonth]);
+
+      // 모달 열기: 신규 일정
+      const handleOpenAddModal = (dateStr = selectedDate) => {
+        setEditingSchedule(null);
+        setFormTitle('');
+        setFormDate(dateStr);
+        setFormAllDay(false);
+        setFormStartTime('10:00');
+        setFormEndTime('11:00');
+        setFormAssignee('couple');
+        setFormCategory('데이트');
+        setFormMemo('');
+        setIsModalOpen(true);
+      };
+
+      // 모달 열기: 일정 수정
+      const handleOpenEditModal = (schedule) => {
+        setEditingSchedule(schedule);
+        setFormTitle(schedule.title);
+        setFormDate(schedule.date);
+        setFormAllDay(schedule.allDay);
+        setFormStartTime(schedule.startTime || '09:00');
+        setFormEndTime(schedule.endTime || '10:00');
+        setFormAssignee(schedule.assignee);
+        setFormCategory(schedule.category || '일정');
+        setFormMemo(schedule.memo || '');
+        setIsModalOpen(true);
+      };
+
+      // 일정 저장/수정
+      const handleSaveSchedule = (e) => {
+        e.preventDefault();
+        if (!formTitle.trim()) return;
+
+        let nextSchedules;
+        if (editingSchedule) {
+          nextSchedules = schedules.map(s => s.id === editingSchedule.id ? {
+            ...s,
+            title: formTitle.trim(),
+            date: formDate,
+            allDay: formAllDay,
+            startTime: formAllDay ? '' : formStartTime,
+            endTime: formAllDay ? '' : formEndTime,
+            assignee: formAssignee,
+            category: formCategory,
+            memo: formMemo.trim()
+          } : s);
+        } else {
+          const newSchedule = {
+            id: 'sch_' + Date.now(),
+            title: formTitle.trim(),
+            date: formDate,
+            allDay: formAllDay,
+            startTime: formAllDay ? '' : formStartTime,
+            endTime: formAllDay ? '' : formEndTime,
+            assignee: formAssignee,
+            category: formCategory,
+            completed: false,
+            memo: formMemo.trim()
+          };
+          nextSchedules = [...schedules, newSchedule];
+        }
+
+        setSchedules(nextSchedules);
+        setSelectedDate(formDate);
+        setIsModalOpen(false);
+
+        // 구글 시트에 즉시 반영
+        if (sheetUrl) {
+          pushToGoogleSheet(nextSchedules);
+        }
+      };
+
+      // 일정 삭제
+      const handleDeleteSchedule = (id) => {
+        if (confirm('이 일정을 삭제하시겠습니까? (구글 시트에서도 삭제됩니다)')) {
+          const nextSchedules = schedules.filter(s => s.id !== id);
+          setSchedules(nextSchedules);
+          if (editingSchedule && editingSchedule.id === id) {
+            setIsModalOpen(false);
+          }
+          if (sheetUrl) {
+            pushToGoogleSheet(nextSchedules);
+          }
+        }
+      };
+
+      // 완료 체크 토글
+      const handleToggleComplete = (id) => {
+        const nextSchedules = schedules.map(s => {
+          if (s.id === id) {
+            const nextCompleted = !s.completed;
+            if (nextCompleted && window.confetti) {
+              window.confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
+            }
+            return { ...s, completed: nextCompleted };
+          }
+          return s;
+        });
+
+        setSchedules(nextSchedules);
+        if (sheetUrl) {
+          pushToGoogleSheet(nextSchedules);
+        }
+      };
+
+      // 구글 시트 URL 저장 핸들러
+      const handleSaveSheetUrl = (e) => {
+        e.preventDefault();
+        const trimmed = inputSheetUrl.trim();
+        setSheetUrl(trimmed);
+        localStorage.setItem('google_sheet_webapp_url', trimmed);
+        setIsSettingsOpen(false);
+        if (trimmed) {
+          fetchFromGoogleSheet(trimmed);
+        }
+      };
+
+      // Apps Script 코드 클립보드 복사
+      const handleCopyScriptCode = () => {
+        const code = `const SHEET_NAME = 'Schedules';
+
+function getOrCreateSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.appendRow(['id', 'title', 'date', 'allDay', 'startTime', 'endTime', 'assignee', 'category', 'completed', 'memo', 'updatedAt']);
+    sheet.getRange(1, 1, 1, 11).setFontWeight('bold').setBackground('#f3e8ff');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function doGet(e) {
+  try {
+    const sheet = getOrCreateSheet();
+    const data = sheet.getDataRange().getValues();
+    const schedules = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row[0]) {
+        let dateVal = row[2];
+        if (dateVal instanceof Date) {
+          dateVal = Utilities.formatDate(dateVal, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        }
+        let startTimeVal = row[4];
+        if (startTimeVal instanceof Date) {
+          startTimeVal = Utilities.formatDate(startTimeVal, Session.getScriptTimeZone(), 'HH:mm');
+        }
+        let endTimeVal = row[5];
+        if (endTimeVal instanceof Date) {
+          endTimeVal = Utilities.formatDate(endTimeVal, Session.getScriptTimeZone(), 'HH:mm');
+        }
+
+        schedules.push({
+          id: String(row[0]),
+          title: String(row[1] || ''),
+          date: String(dateVal || ''),
+          allDay: row[3] === true || row[3] === 'TRUE',
+          startTime: String(startTimeVal || ''),
+          endTime: String(endTimeVal || ''),
+          assignee: String(row[6] || 'couple'),
+          category: String(row[7] || '일정'),
+          completed: row[8] === true || row[8] === 'TRUE',
+          memo: String(row[9] || '')
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'success',
+      schedules: schedules
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  try {
+    const sheet = getOrCreateSheet();
+    let requestData;
+    if (e.postData && e.postData.contents) {
+      requestData = JSON.parse(e.postData.contents);
+    } else if (e.parameter && e.parameter.data) {
+      requestData = JSON.parse(e.parameter.data);
+    } else {
+      throw new Error('No data received');
+    }
+
+    const action = requestData.action || 'sync';
+    const updatedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+
+    if (action === 'sync') {
+      const schedules = requestData.schedules || [];
+      const lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        sheet.deleteRows(2, lastRow - 1);
+      }
+      if (schedules.length > 0) {
+        const rows = schedules.map(s => [
+          s.id,
+          s.title,
+          s.date,
+          s.allDay ? 'TRUE' : 'FALSE',
+          s.startTime || '',
+          s.endTime || '',
+          s.assignee || 'couple',
+          s.category || '일정',
+          s.completed ? 'TRUE' : 'FALSE',
+          s.memo || '',
+          updatedAt
+        ]);
+        sheet.getRange(2, 1, rows.length, 11).setValues(rows);
+      }
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'success',
+        message: 'Sync completed',
+        count: schedules.length
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: 'Unknown action' })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+        navigator.clipboard.writeText(code).then(() => {
+          setCopySuccess(true);
+          setTimeout(() => setCopySuccess(false), 2500);
+        });
+      };
+
+      // 선택된 날짜의 일정 목록 (시간순 정렬)
+      const selectedDateSchedules = useMemo(() => {
+        return schedules
+          .filter(s => s.date === selectedDate)
+          .filter(s => filterAssignee === 'all' || s.assignee === filterAssignee)
+          .sort((a, b) => {
+            if (a.allDay && !b.allDay) return -1;
+            if (!a.allDay && b.allDay) return 1;
+            return (a.startTime || '00:00').localeCompare(b.startTime || '00:00');
+          });
+      }, [schedules, selectedDate, filterAssignee]);
+
+      // 담당자 스타일 헬퍼
+      const getAssigneeBadge = (assignee) => {
+        switch (assignee) {
+          case 'wife':
+            return {
+              text: '나(아내)',
+              bg: 'bg-pink-100 text-pink-700 border border-pink-200',
+              dot: 'bg-pink-500',
+              card: 'border-l-4 border-l-pink-500 bg-pink-50/40'
+            };
+          case 'husband':
+            return {
+              text: '남편',
+              bg: 'bg-blue-100 text-blue-700 border border-blue-200',
+              dot: 'bg-blue-500',
+              card: 'border-l-4 border-l-blue-500 bg-blue-50/40'
+            };
+          default:
+            return {
+              text: '우리 함께',
+              bg: 'bg-purple-100 text-purple-700 border border-purple-200',
+              dot: 'bg-purple-500',
+              card: 'border-l-4 border-l-purple-500 bg-purple-50/40'
+            };
+        }
+      };
+
+      return (
+        <div className="max-w-6xl mx-auto px-3 py-4 sm:px-6 sm:py-6 flex flex-col min-h-screen">
+          
+          {/* 상단 네비게이션 헤더 */}
+          <header className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-pink-500 via-purple-500 to-blue-500 flex items-center justify-center text-white text-2xl shadow-md">
+                💑
+              </div>
+              <div>
+                <h1 className="text-lg sm:text-xl font-black text-slate-800 flex items-center gap-2">
+                  부부 공유 캘린더
+                  {sheetUrl ? (
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold border border-emerald-200 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> 구글 시트 연동됨
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setIsSettingsOpen(true)}
+                      className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 font-bold border border-amber-200 flex items-center gap-1 transition-colors"
+                    >
+                      <span>⚙️</span> 구글 시트 연결하기
+                    </button>
+                  )}
+                </h1>
+                <p className="text-xs text-slate-500">한국 공휴일 지원 & PC·모바일 실시간 동기화</p>
+              </div>
+            </div>
+
+            {/* 상단 컨트롤 버튼 (동기화 및 설정) */}
+            <div className="flex items-center gap-2">
+              {sheetUrl && (
+                <button
+                  onClick={() => fetchFromGoogleSheet()}
+                  disabled={isSyncing}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-2xs"
+                  title="구글 시트에서 최신 일정 동기화"
+                >
+                  <span className={isSyncing ? 'animate-spin-custom inline-block' : ''}>🔄</span>
+                  <span>{isSyncing ? '동기화 중...' : '동기화'}</span>
+                  {lastSyncTime && <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">({lastSyncTime})</span>}
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  setInputSheetUrl(sheetUrl);
+                  setIsSettingsOpen(true);
+                }}
+                className="px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 shadow-2xs"
+              >
+                <span>⚙️</span> 구글 시트 설정
+              </button>
+            </div>
+          </header>
+
+          {/* 연동 가이드 안내 배너 (미연결 시 표시) */}
+          {!sheetUrl && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-3.5 mb-3 shadow-2xs flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-amber-900 font-medium">
+                <span className="text-xl">💡</span>
+                <span>
+                  <b>구글 스프레드시트를 연결</b>하면 컴퓨터, 남편 휴대폰, 내 휴대폰 어디서 수정해도 <b>실시간으로 자동 동기화</b>됩니다!
+                </span>
+              </div>
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition-colors shrink-0 shadow-xs"
+              >
+                1분 만에 연결하기 👉
+              </button>
+            </div>
+          )}
+
+          {/* 메인 캘린더 화면 */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+            
+            {/* 왼쪽: 월간 달력 (8 컬럼) */}
+            <div className="lg:col-span-8 bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col">
+              
+              {/* 캘린더 헤더 */}
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">
+                    {currentYear}년 {currentMonth}월
+                  </h2>
+                  <button
+                    onClick={goToToday}
+                    className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                  >
+                    오늘
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={prevMonth}
+                    className="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-xl text-slate-700 font-bold transition-colors"
+                    title="이전 달"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    onClick={nextMonth}
+                    className="w-9 h-9 flex items-center justify-center hover:bg-slate-100 rounded-xl text-slate-700 font-bold transition-colors"
+                    title="다음 달"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+
+              {/* 요일 헤더 (일요일 빨간색, 토요일 파란색) */}
+              <div className="grid grid-cols-7 text-center font-bold text-xs sm:text-sm mb-2 text-slate-500">
+                <div className="text-red-500 py-1">일</div>
+                <div className="py-1">월</div>
+                <div className="py-1">화</div>
+                <div className="py-1">수</div>
+                <div className="py-1">목</div>
+                <div className="py-1">금</div>
+                <div className="text-blue-500 py-1">토</div>
+              </div>
+
+              {/* 달력 날짜 그리드 */}
+              <div className="grid grid-cols-7 gap-1 sm:gap-1.5 flex-1 select-none">
+                {calendarDays.map((dObj, idx) => {
+                  const isSelected = dObj.dateStr === selectedDate;
+                  const isToday = dObj.dateStr === getTodayString();
+                  const daySchedules = schedules.filter(s => s.date === dObj.dateStr);
+                  const isSunday = dObj.dayOfWeek === 0;
+                  const isSaturday = dObj.dayOfWeek === 6;
+                  const isHoliday = !!dObj.holiday;
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedDate(dObj.dateStr)}
+                      className={`min-h-[72px] sm:min-h-[92px] p-1.5 rounded-xl border flex flex-col justify-between cursor-pointer transition-all ${
+                        isSelected
+                          ? 'ring-2 ring-purple-500 border-purple-400 bg-purple-50/40 shadow-xs'
+                          : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50/70 bg-white'
+                      } ${!dObj.isCurrentMonth ? 'opacity-35 bg-slate-50/40' : ''}`}
+                    >
+                      <div>
+                        {/* 날짜 숫자 & 공휴일 */}
+                        <div className="flex items-center justify-between mb-1">
+                          <span
+                            className={`text-xs sm:text-sm font-bold inline-flex items-center justify-center w-6 h-6 rounded-full ${
+                              isToday
+                                ? 'bg-purple-600 text-white font-black'
+                                : isHoliday || isSunday
+                                ? 'text-red-500'
+                                : isSaturday
+                                ? 'text-blue-500'
+                                : 'text-slate-700'
+                            }`}
+                          >
+                            {dObj.day}
+                          </span>
+                          
+                          {/* 공휴일 배지 */}
+                          {dObj.holiday && (
+                            <span className="text-[10px] bg-red-100 text-red-600 font-black px-1 rounded truncate max-w-[50px] sm:max-w-[70px]" title={dObj.holiday}>
+                              {dObj.holiday}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 해당 날짜 일정 도트/바 */}
+                        <div className="space-y-0.5 overflow-hidden max-h-[44px]">
+                          {daySchedules.slice(0, 2).map((sch) => {
+                            const badge = getAssigneeBadge(sch.assignee);
+                            return (
+                              <div
+                                key={sch.id}
+                                className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded truncate font-semibold flex items-center gap-1 ${
+                                  sch.completed ? 'line-through opacity-50 bg-slate-100 text-slate-400' : badge.bg
+                                }`}
+                                title={`${sch.allDay ? '[종일]' : sch.startTime} ${sch.title}`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${badge.dot} shrink-0`} />
+                                <span className="truncate">{sch.title}</span>
+                              </div>
+                            );
+                          })}
+                          {daySchedules.length > 2 && (
+                            <div className="text-[9px] text-slate-400 font-bold px-1">
+                              +{daySchedules.length - 2}개 더
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 범례 */}
+              <div className="flex flex-wrap items-center justify-between text-xs text-slate-500 mt-4 pt-3 border-t border-slate-100 gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1 font-medium">
+                    <span className="w-2.5 h-2.5 rounded-full bg-pink-500"></span> 아내(나)
+                  </span>
+                  <span className="flex items-center gap-1 font-medium">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> 남편
+                  </span>
+                  <span className="flex items-center gap-1 font-medium">
+                    <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span> 우리 함께
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-red-500 font-bold">● 공휴일/일요일</span>
+                  <span className="text-blue-500 font-bold">● 토요일</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* 오른쪽: 선택 날짜 시간별 상세 일정 (4 컬럼) */}
+            <div className="lg:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col">
+              
+              {/* 헤더 */}
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-1.5">
+                    {selectedDate}
+                    {KOREAN_HOLIDAYS[selectedDate] && (
+                      <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-md font-bold">
+                        {KOREAN_HOLIDAYS[selectedDate]}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    등록된 일정 {selectedDateSchedules.length}개
+                  </p>
+                </div>
+                
+                <button
+                  onClick={() => handleOpenAddModal(selectedDate)}
+                  className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold text-xs rounded-xl shadow-sm hover:opacity-95 transition-all flex items-center gap-1"
+                >
+                  <span>➕</span> 일정 추가
+                </button>
+              </div>
+
+              {/* 담당자 필터 */}
+              <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600 mb-3 gap-1">
+                <button
+                  onClick={() => setFilterAssignee('all')}
+                  className={`flex-1 py-1.5 rounded-lg transition-all ${filterAssignee === 'all' ? 'bg-white text-slate-900 shadow-xs' : ''}`}
+                >
+                  전체
+                </button>
+                <button
+                  onClick={() => setFilterAssignee('wife')}
+                  className={`flex-1 py-1.5 rounded-lg transition-all ${filterAssignee === 'wife' ? 'bg-pink-500 text-white shadow-xs' : ''}`}
+                >
+                  아내
+                </button>
+                <button
+                  onClick={() => setFilterAssignee('husband')}
+                  className={`flex-1 py-1.5 rounded-lg transition-all ${filterAssignee === 'husband' ? 'bg-blue-500 text-white shadow-xs' : ''}`}
+                >
+                  남편
+                </button>
+                <button
+                  onClick={() => setFilterAssignee('couple')}
+                  className={`flex-1 py-1.5 rounded-lg transition-all ${filterAssignee === 'couple' ? 'bg-purple-600 text-white shadow-xs' : ''}`}
+                >
+                  함께
+                </button>
+              </div>
+
+              {/* 일정 리스트 */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2.5 max-h-[500px] pr-1">
+                {selectedDateSchedules.length === 0 ? (
+                  <div className="h-44 flex flex-col items-center justify-center text-center text-slate-400 p-4 border-2 border-dashed border-slate-100 rounded-2xl">
+                    <span className="text-3xl mb-2">☕</span>
+                    <p className="text-xs font-semibold text-slate-500">등록된 일정이 없습니다.</p>
+                    <button
+                      onClick={() => handleOpenAddModal(selectedDate)}
+                      className="mt-2 text-xs text-purple-600 font-bold hover:underline"
+                    >
+                      + 새로운 일정 등록하기
+                    </button>
+                  </div>
+                ) : (
+                  selectedDateSchedules.map((sch) => {
+                    const badge = getAssigneeBadge(sch.assignee);
+                    return (
+                      <div
+                        key={sch.id}
+                        className={`p-3 rounded-2xl border border-slate-200 transition-all ${badge.card} ${
+                          sch.completed ? 'opacity-70 bg-slate-50' : 'hover:shadow-xs'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          {/* 체크박스 & 내용 */}
+                          <div className="flex items-start gap-2.5 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={sch.completed}
+                              onChange={() => handleToggleComplete(sch.id)}
+                              className="mt-1 w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer accent-purple-600"
+                            />
+                            <div>
+                              <h4 className={`text-sm font-bold text-slate-800 ${sch.completed ? 'line-through text-slate-400' : ''}`}>
+                                {sch.title}
+                              </h4>
+
+                              {/* 시간 및 카테고리 태그 */}
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-xs">
+                                <span className="font-bold text-purple-700 bg-white px-2 py-0.5 rounded-md border border-purple-200 shadow-2xs">
+                                  {sch.allDay ? '⏰ 종일' : `⏰ ${sch.startTime} ~ ${sch.endTime}`}
+                                </span>
+                                {sch.category && (
+                                  <span className="bg-white/80 px-2 py-0.5 rounded-md text-slate-600 font-medium border border-slate-200">
+                                    #{sch.category}
+                                  </span>
+                                )}
+                              </div>
+
+                              {sch.memo && (
+                                <p className="text-xs text-slate-600 mt-2 bg-white/80 p-2 rounded-xl border border-slate-100 font-normal">
+                                  📝 {sch.memo}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 수정/삭제 버튼 */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleOpenEditModal(sch)}
+                              className="p-1 text-slate-400 hover:text-slate-700 rounded text-xs"
+                              title="수정"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSchedule(sch.id)}
+                              className="p-1 text-slate-400 hover:text-red-600 rounded text-xs"
+                              title="삭제"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* 일정 등록 / 수정 팝업 모달 */}
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-6 border border-slate-100 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <h3 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
+                    <span>{editingSchedule ? '✏️ 일정 수정하기' : '➕ 새로운 일정 등록'}</span>
+                  </h3>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="text-slate-400 hover:text-slate-700 text-xl font-bold p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveSchedule} className="space-y-4">
+                  
+                  {/* 일정 제목 */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">일정 제목 *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="예: 주말 트레이더스 장보기, 필라테스 레슨"
+                      value={formTitle}
+                      onChange={(e) => setFormTitle(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* 담당자 선택 (아내/남편/함께) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">누구의 일정인가요? *</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormAssignee('wife')}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                          formAssignee === 'wife'
+                            ? 'bg-pink-500 text-white border-pink-500 shadow-sm'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>👩</span> 나 (아내)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormAssignee('husband')}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                          formAssignee === 'husband'
+                            ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>👨</span> 남편
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormAssignee('couple')}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
+                          formAssignee === 'couple'
+                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span>💑</span> 우리 함께
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 날짜 선택 */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">날짜 *</label>
+                    <input
+                      type="date"
+                      required
+                      value={formDate}
+                      onChange={(e) => setFormDate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* 시간 설정 (종일 여부) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-700">시간 설정</label>
+                      <label className="text-xs text-slate-600 font-medium flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formAllDay}
+                          onChange={(e) => setFormAllDay(e.target.checked)}
+                          className="w-4 h-4 rounded text-purple-600 accent-purple-600"
+                        />
+                        종일 일정 (시간 미지정)
+                      </label>
+                    </div>
+
+                    {!formAllDay && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">시작 시간</span>
+                          <input
+                            type="time"
+                            value={formStartTime}
+                            onChange={(e) => setFormStartTime(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">종료 시간</span>
+                          <input
+                            type="time"
+                            value={formEndTime}
+                            onChange={(e) => setFormEndTime(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 카테고리 */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">카테고리</label>
+                    <select
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    >
+                      <option value="데이트">💕 데이트</option>
+                      <option value="집안일">🧹 집안일/청소</option>
+                      <option value="장보기">🛒 장보기</option>
+                      <option value="운동">🏃 운동/건강</option>
+                      <option value="기념일">🎂 기념일/가족</option>
+                      <option value="병원">🏥 병원/검진</option>
+                      <option value="개인약속">☕ 개인 약속</option>
+                      <option value="업무">💼 업무/회의</option>
+                    </select>
+                  </div>
+
+                  {/* 메모 */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">메모 / 준비물 (선택)</label>
+                    <textarea
+                      rows="2"
+                      placeholder="준비물이나 장소 등을 적어두세요."
+                      value={formMemo}
+                      onChange={(e) => setFormMemo(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none resize-none"
+                    ></textarea>
+                  </div>
+
+                  {/* 버튼 그룹 */}
+                  <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                    {editingSchedule && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSchedule(editingSchedule.id)}
+                        className="px-4 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors mr-auto"
+                      >
+                        삭제
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 text-xs font-bold bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white rounded-xl shadow-md transition-all"
+                    >
+                      {editingSchedule ? '수정 완료' : '일정 저장'}
+                    </button>
+                  </div>
+
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* 구글 시트 연동 설정 모달 */}
+          {isSettingsOpen && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl shadow-2xl max-w-xl w-full p-6 border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <span>📊 구글 스프레드시트 연동 설정</span>
+                  </h3>
+                  <button
+                    onClick={() => setIsSettingsOpen(false)}
+                    className="text-slate-400 hover:text-slate-700 text-xl font-bold p-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* 설정 폼 */}
+                <form onSubmit={handleSaveSheetUrl} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Google Apps Script 웹 앱 URL (Web App URL)
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://script.google.com/macros/s/.../exec"
+                      value={inputSheetUrl}
+                      onChange={(e) => setInputSheetUrl(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      구글 시트 배포 후 발급받은 웹 앱 URL을 붙여넣으세요.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-sm transition-colors"
+                    >
+                      연동 URL 저장 및 동기화
+                    </button>
+                    {sheetUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm('구글 시트 연동을 해제하시겠습니까?')) {
+                            setSheetUrl('');
+                            setInputSheetUrl('');
+                            localStorage.removeItem('google_sheet_webapp_url');
+                            setIsSettingsOpen(false);
+                          }
+                        }}
+                        className="px-3 py-2.5 text-red-600 hover:bg-red-50 font-bold text-xs rounded-xl border border-red-200 transition-colors"
+                      >
+                        연동 해제
+                      </button>
+                    )}
+                  </div>
+                </form>
+
+                {/* 1분 연동 가이드 */}
+                <div className="mt-6 pt-5 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                      <span>📖</span> 1분 연동 가이드 (따라하기)
+                    </h4>
+                    <button
+                      onClick={handleCopyScriptCode}
+                      className="px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 font-bold text-xs rounded-lg transition-colors flex items-center gap-1"
+                    >
+                      <span>📋</span> {copySuccess ? '복사 완료! ✅' : '연동 코드 복사'}
+                    </button>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-xs text-slate-700 space-y-2 leading-relaxed">
+                    <div className="flex items-start gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</span>
+                      <div>
+                        구글 드라이브에서 <b>새 스프레드시트</b>를 만듭니다.
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</span>
+                      <div>
+                        상단 메뉴의 <b>[확장 프로그램] → [Apps Script]</b>를 클릭합니다.
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
+                      <div>
+                        기존 내용을 모두 지우고, 상단의 <b>[연동 코드 복사]</b> 버튼을 눌러 코드를 붙여넣은 후 <b>저장(💾)</b>합니다.
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">4</span>
+                      <div>
+                        우측 상단 <b>[배포] → [새 배포]</b> 클릭 후:
+                        <ul className="list-disc list-inside mt-1 text-slate-600 space-y-0.5 ml-1">
+                          <li>유형: <b>웹 앱 (Web app)</b> 선택</li>
+                          <li>액세스 권한: <b>모든 사용자 (Anyone)</b> 선택 ⭐</li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">5</span>
+                      <div>
+                        발급된 <b>웹 앱 URL</b>을 복사하여 위 입력창에 붙여넣고 저장하면 끝!
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
