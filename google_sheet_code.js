@@ -1,25 +1,23 @@
 /**
  * ==============================================================================
- * 💑 부부 공유 캘린더 - Google Apps Script 연동 코드 (v2.1 완벽 동기화)
+ * 💑 부부 공유 캘린더 - Google Apps Script 완벽 연동 코드 (v3.0)
  * ==============================================================================
  * 
- * [1분 설정 방법]
- * 1. 구글 스프레드시트(Google Sheets)를 새로 하나 만듭니다. (제목: 부부 캘린더)
- * 2. 상단 메뉴 [확장 프로그램] -> [Apps Script] 클릭
- * 3. 기존 코드를 모두 지우고 아래 코드를 그대로 붙여넣은 후 저장(💾)
- * 4. 우측 상단 파란색 [배포] -> [새 배포] 클릭
- *    - 유형: [웹 앱] (톱니바퀴 아이콘)
- *    - 설명: 부부 캘린더 실시간 연동
- *    - 다음 사용자로 실행: [나 (내 계정)]
- *    - 액세스 권한이 있는 사용자: [모든 사용자 (Anyone)]  <-- ⭐ 필수!
- * 5. [배포] 클릭 후 발급된 "웹 앱 URL"을 복사하여 부부 캘린더 앱 [⚙️ 설정]에 등록!
+ * [1분 설정 핵심 체크리스트]
+ * 1. 구글 스프레드시트 -> [확장 프로그램] -> [Apps Script]
+ * 2. 기존 코드를 모두 지우고 이 코드 전체를 붙여넣은 후 저장(💾)
+ * 3. 오른쪽 위 [배포] -> [새 배포] 클릭
+ *    - 유형: [웹 앱] 선택
+ *    - 설명: 부부 캘린더
+ *    - 다음 사용자로 실행: [나]
+ *    - 액세스 권한: [모든 사용자 (Anyone)] ⭐ 필수! (로그인 없이 동기화)
+ * 4. [배포] 누르고 발급된 웹 앱 URL(/exec로 끝나는 주소) 복사 후 앱에 등록!
  * ==============================================================================
  */
 
 const SCHEDULE_SHEET_NAME = 'Schedules';
 const CONFIG_SHEET_NAME = 'Config';
 
-// 일정 시트 초기화 및 가져오기
 function getOrCreateScheduleSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SCHEDULE_SHEET_NAME);
@@ -32,7 +30,6 @@ function getOrCreateScheduleSheet() {
   return sheet;
 }
 
-// 설정/D-Day 시트 초기화 및 가져오기
 function getOrCreateConfigSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(CONFIG_SHEET_NAME);
@@ -45,13 +42,20 @@ function getOrCreateConfigSheet() {
   return sheet;
 }
 
-// GET 요청 처리 (일정 및 D-Day 조회)
+// GET 요청 처리 (데이터 조회 및 CORS 없는 저장 지원)
 function doGet(e) {
   try {
+    // 1. URL 파라미터로 저장 요청이 들어온 경우 (CORS 제약 완전 해결)
     if (e.parameter && e.parameter.data) {
-      return handleDataSync(e.parameter.data);
+      return handleDataSync(e.parameter.data, e.parameter.callback);
     }
 
+    // 2. 헬스체크/연동 테스트
+    if (e.parameter && e.parameter.action === 'test') {
+      return respondJson({ status: 'success', message: '연동 성공! 구글 시트와 정상 연결되었습니다.' }, e.parameter.callback);
+    }
+
+    // 3. 일반 일정 조회
     const schSheet = getOrCreateScheduleSheet();
     const data = schSheet.getDataRange().getValues();
     const schedules = [];
@@ -59,57 +63,46 @@ function doGet(e) {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (row[0]) {
-        let dateVal = row[2];
-        if (dateVal instanceof Date) {
-          dateVal = Utilities.formatDate(dateVal, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-        }
-        let startTimeVal = row[4];
-        if (startTimeVal instanceof Date) {
-          startTimeVal = Utilities.formatDate(startTimeVal, Session.getScriptTimeZone(), 'HH:mm');
-        }
-        let endTimeVal = row[5];
-        if (endTimeVal instanceof Date) {
-          endTimeVal = Utilities.formatDate(endTimeVal, Session.getScriptTimeZone(), 'HH:mm');
-        }
+        let dateVal = row[2] instanceof Date ? Utilities.formatDate(row[2], Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(row[2] || '');
+        let startTimeVal = row[4] instanceof Date ? Utilities.formatDate(row[4], Session.getScriptTimeZone(), 'HH:mm') : String(row[4] || '');
+        let endTimeVal = row[5] instanceof Date ? Utilities.formatDate(row[5], Session.getScriptTimeZone(), 'HH:mm') : String(row[5] || '');
 
         schedules.push({
           id: String(row[0]),
           title: String(row[1] || ''),
-          date: String(dateVal || ''),
-          allDay: row[3] === true || row[3] === 'TRUE',
-          startTime: String(startTimeVal || ''),
-          endTime: String(endTimeVal || ''),
+          date: dateVal,
+          allDay: row[3] === true || String(row[3]).toUpperCase() === 'TRUE',
+          startTime: startTimeVal,
+          endTime: endTimeVal,
           assignee: String(row[6] || 'couple'),
           category: String(row[7] || '일정'),
-          completed: row[8] === true || row[8] === 'TRUE',
+          completed: row[8] === true || String(row[8]).toUpperCase() === 'TRUE',
           memo: String(row[9] || '')
         });
       }
     }
 
-    // D-Day 설정값 읽기
+    // D-Day 설정 조회
     const cfgSheet = getOrCreateConfigSheet();
     const cfgData = cfgSheet.getDataRange().getValues();
     let dday = { title: '결혼기념일', date: '2024-05-18' };
     for (let i = 1; i < cfgData.length; i++) {
       if (cfgData[i][0] === 'dday' && cfgData[i][1]) {
-        try {
-          dday = JSON.parse(cfgData[i][1]);
-        } catch(err) {}
+        try { dday = JSON.parse(cfgData[i][1]); } catch(err) {}
       }
     }
 
-    return ContentService.createTextOutput(JSON.stringify({
+    return respondJson({
       status: 'success',
       schedules: schedules,
       dday: dday
-    })).setMimeType(ContentService.MimeType.JSON);
+    }, e.parameter ? e.parameter.callback : null);
 
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
+    return respondJson({
       status: 'error',
       message: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    }, e.parameter ? e.parameter.callback : null);
   }
 }
 
@@ -123,30 +116,31 @@ function doPost(e) {
       rawContent = e.parameter.data;
     }
 
-    return handleDataSync(rawContent);
+    return handleDataSync(rawContent, null);
 
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
+    return respondJson({
       status: 'error',
       message: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    });
   }
 }
 
-// 시트에 데이터 저장 공통 함수
-function handleDataSync(rawJson) {
+// 데이터 저장 핸들러
+function handleDataSync(rawJson, callback) {
   const schSheet = getOrCreateScheduleSheet();
-  const parsed = JSON.parse(rawJson);
+  const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
   const schedules = parsed.schedules || [];
   const dday = parsed.dday;
   const updatedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
 
-  // 1. 기존 일정 지우고 새로 쓰기
+  // 기존 일정 지우기
   const lastRow = schSheet.getLastRow();
   if (lastRow > 1) {
     schSheet.deleteRows(2, lastRow - 1);
   }
 
+  // 새 일정 쓰기
   if (schedules.length > 0) {
     const rows = schedules.map(s => [
       s.id,
@@ -164,7 +158,7 @@ function handleDataSync(rawJson) {
     schSheet.getRange(2, 1, rows.length, 11).setValues(rows);
   }
 
-  // 2. D-Day 설정 저장
+  // D-Day 저장
   if (dday) {
     const cfgSheet = getOrCreateConfigSheet();
     const cfgLastRow = cfgSheet.getLastRow();
@@ -174,9 +168,20 @@ function handleDataSync(rawJson) {
     cfgSheet.appendRow(['dday', JSON.stringify(dday), updatedAt]);
   }
 
-  return ContentService.createTextOutput(JSON.stringify({
+  return respondJson({
     status: 'success',
     message: 'Saved successfully',
     count: schedules.length
-  })).setMimeType(ContentService.MimeType.JSON);
+  }, callback);
+}
+
+// JSON / JSONP 공통 응답 생성
+function respondJson(obj, callback) {
+  const jsonStr = JSON.stringify(obj);
+  if (callback) {
+    return ContentService.createTextOutput(`${callback}(${jsonStr})`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(jsonStr)
+    .setMimeType(ContentService.MimeType.JSON);
 }

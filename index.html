@@ -21,15 +21,15 @@
     }
   </script>
 
-  <!-- Canvas Confetti CDN (완료 축하 효과) -->
+  <!-- Canvas Confetti CDN -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <!-- QRCode.js CDN (스마트폰 즉시 연동 공유 QR) -->
+  <!-- QRCode.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
   <!-- Pretendard Font -->
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 
-  <!-- PWA / 모바일 최적화 메타 태그 -->
+  <!-- PWA 메타 태그 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#8b5cf6">
@@ -58,9 +58,6 @@
       background: #cbd5e1;
       border-radius: 4px;
     }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
     .calendar-cell-active {
       box-shadow: 0 0 0 2px #8b5cf6, 0 4px 12px rgba(139, 92, 246, 0.18);
     }
@@ -74,12 +71,11 @@
     <span id="toastMsg">알림 메시지</span>
   </div>
 
-  <!-- 메인 레이아웃 컨테이너 (스크롤 없이 한 화면에 딱 맞는 대시보드 뷰) -->
+  <!-- 메인 레이아웃 -->
   <div class="h-full max-w-7xl mx-auto w-full flex flex-col gap-2 min-h-0">
     
-    <!-- 1. 상단 글로벌 헤더 & D-Day 바 -->
+    <!-- 1. 상단 글로벌 헤더 -->
     <header class="bg-white/90 backdrop-blur-md rounded-2xl shadow-xs border border-slate-200/80 px-3 py-2 flex items-center justify-between shrink-0 gap-2">
-      <!-- 좌측: 로고 & 년월 이동 -->
       <div class="flex items-center gap-2 sm:gap-3">
         <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-base shadow-sm shrink-0">
           💑
@@ -96,33 +92,29 @@
         </div>
       </div>
 
-      <!-- 중앙: D-Day 배너 (PC/태블릿에서 크게, 모바일에선 핵심만) -->
+      <!-- 중앙: D-Day 배너 -->
       <div id="ddayBanner" class="hidden md:flex items-center gap-2 bg-gradient-to-r from-pink-50 to-purple-50 border border-pink-200/60 px-3 py-1 rounded-xl text-xs cursor-pointer hover:border-pink-300 transition-all" title="클릭하여 결혼기념일/D-Day 변경">
         <span class="text-pink-500 font-bold">💍 <span id="ddayTitle">결혼</span></span>
         <span id="ddayCount" class="font-extrabold text-purple-700 bg-white px-2 py-0.5 rounded-lg shadow-2xs">D+000일</span>
         <span id="ddaySub" class="text-slate-500 text-[11px]"></span>
       </div>
 
-      <!-- 우측: 액션 버튼들 -->
+      <!-- 우측 액션 -->
       <div class="flex items-center gap-1.5">
-        <!-- 동기화 상태 버튼 -->
         <button id="btnSync" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs" title="구글 스프레드시트와 실시간 동기화">
           <span id="syncDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
           <span id="syncText" class="hidden sm:inline">동기화</span>
         </button>
 
-        <!-- 모바일 공유 & QR -->
         <button id="btnOpenShare" class="p-1.5 sm:px-2.5 sm:py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 rounded-xl text-xs font-bold flex items-center gap-1 transition-all" title="스마트폰/배우자 연동 공유">
           <span>📱</span>
           <span class="hidden lg:inline">폰 연결</span>
         </button>
 
-        <!-- 설정 모달 -->
         <button id="btnOpenSettings" class="p-1.5 hover:bg-slate-100 text-slate-600 rounded-xl border border-transparent hover:border-slate-200 text-xs transition-colors" title="설정 (구글 시트 연동 & D-Day 설정)">
           ⚙️
         </button>
 
-        <!-- 일정 추가 버튼 -->
         <button id="btnOpenAddModal" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl text-xs font-bold shadow-sm hover:shadow transition-all flex items-center gap-1">
           <span>➕</span>
           <span class="hidden xs:inline sm:inline">일정 추가</span>
@@ -142,13 +134,11 @@
       </div>
     </div>
 
-    <!-- 3. 메인 화면 (한눈에 볼 수 있는 분할 대시보드 뷰) -->
+    <!-- 3. 메인 화면 (1페이지 대시보드 뷰) -->
     <main class="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-2 min-h-0 overflow-hidden">
       
-      <!-- [좌측/상단] 캘린더 영역 (모바일: 56%, 데스크톱: 8/12 열) -->
+      <!-- [좌측] 캘린더 영역 (모바일: 56%, 데스크톱: 8/12 열) -->
       <section class="h-[56%] lg:h-full lg:col-span-8 bg-white rounded-2xl shadow-xs border border-slate-200/90 p-2 sm:p-3 flex flex-col min-h-0">
-        
-        <!-- 요일 헤더 -->
         <div class="grid grid-cols-7 text-center font-bold text-xs sm:text-sm py-1 border-b border-slate-100 text-slate-500 shrink-0">
           <div class="text-red-500">일</div>
           <div>월</div>
@@ -159,12 +149,10 @@
           <div class="text-blue-500">토</div>
         </div>
 
-        <!-- 캘린더 그리드 (한눈에 들어오도록 6주 고정 그리드) -->
         <div id="calendarGrid" class="grid grid-cols-7 gap-1 sm:gap-1.5 flex-1 min-h-0 pt-1 select-none">
           <!-- JS 렌더링 -->
         </div>
 
-        <!-- 캘린더 하단 범례 (Legend) -->
         <div class="flex items-center justify-between pt-1.5 mt-1 border-t border-slate-100 text-[10px] sm:text-xs text-slate-500 shrink-0 px-1">
           <div class="flex items-center gap-3">
             <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-pink-500"></span> 👩 아내</span>
@@ -175,13 +163,10 @@
             💡 날짜 클릭시 상세 일정 확인
           </div>
         </div>
-
       </section>
 
-      <!-- [우측/하단] 상세 일정 & 부부 대시보드 (모바일: 44%, 데스크톱: 4/12 열) -->
+      <!-- [우측] 상세 일정 & 통계 (모바일: 44%, 데스크톱: 4/12 열) -->
       <section class="h-[44%] lg:h-full lg:col-span-4 bg-white rounded-2xl shadow-xs border border-slate-200/90 p-2.5 sm:p-3.5 flex flex-col min-h-0">
-        
-        <!-- 상세 패널 상단: 선택된 날짜 & 필터 바 -->
         <div class="pb-2 mb-2 border-b border-slate-100 shrink-0 space-y-1.5">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5">
@@ -192,34 +177,29 @@
               <span id="panelHolidayBadge" class="hidden text-[10px] bg-red-50 border border-red-200 text-red-600 px-1.5 py-0.5 rounded-md font-bold"></span>
             </div>
 
-            <!-- 날짜별 빠른 추가 버튼 -->
             <button id="btnPanelAdd" class="p-1 px-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-bold transition-colors flex items-center gap-1" title="선택한 날짜에 추가">
               <span>➕ 추가</span>
             </button>
           </div>
 
-          <!-- 담당자 필터 탭 -->
           <div class="flex items-center justify-between">
             <div class="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold text-slate-600 gap-0.5 border border-slate-200/60">
-              <button data-filter="all" class="filter-btn px-2 py-0.5 rounded-md bg-white text-slate-900 shadow-2xs">전체 (<span id="countAll">0</span>)</button>
+              <button data-filter="all" class="filter-btn px-2 py-0.5 rounded-md bg-white text-slate-900 shadow-2xs font-bold">전체 (<span id="countAll">0</span>)</button>
               <button data-filter="wife" class="filter-btn px-2 py-0.5 rounded-md text-pink-600 hover:bg-pink-50">아내</button>
               <button data-filter="husband" class="filter-btn px-2 py-0.5 rounded-md text-blue-600 hover:bg-blue-50">남편</button>
               <button data-filter="couple" class="filter-btn px-2 py-0.5 rounded-md text-purple-600 hover:bg-purple-50">함께</button>
             </div>
 
-            <!-- 이번 달 통계 뱃지 -->
             <span id="monthStatsText" class="text-[10px] text-slate-400 font-medium">
               이번 달 총 0건
             </span>
           </div>
         </div>
 
-        <!-- 일정 리스트 컨테이너 (스크롤 가능) -->
         <div id="scheduleListContainer" class="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5 min-h-0">
           <!-- JS 동적 렌더링 -->
         </div>
 
-        <!-- 하단 미니 위젯: 이번 달 부부 현황 요약 -->
         <div class="mt-2 pt-2 border-t border-slate-100 shrink-0 grid grid-cols-3 gap-1.5 text-center text-[10px]">
           <div class="bg-pink-50/70 p-1.5 rounded-xl border border-pink-100">
             <div class="text-pink-600 font-bold">👩 아내 일정</div>
@@ -234,14 +214,13 @@
             <div id="statCouple" class="text-xs font-black text-purple-700 mt-0.5">0건</div>
           </div>
         </div>
-
       </section>
 
     </main>
 
   </div>
 
-  <!-- ==================== 모달 영역 ==================== -->
+  <!-- ==================== 모달들 ==================== -->
 
   <!-- 1. 일정 등록/수정 모달 -->
   <div id="scheduleModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 z-50 animate-in fade-in duration-150">
@@ -256,13 +235,11 @@
       <form id="scheduleForm" onsubmit="return false;" class="space-y-3">
         <input type="hidden" id="formEditId" value="" />
 
-        <!-- 제목 -->
         <div>
           <label class="block text-[11px] font-bold text-slate-700 mb-1">일정 제목 *</label>
-          <input type="text" id="formTitle" placeholder="예: 주말 장보기, 병원 예약, 외식 데이트" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all" required />
+          <input type="text" id="formTitle" placeholder="예: 주말 장보기, 병원 예약, 외식 데이트" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none" required />
         </div>
 
-        <!-- 담당자 선택 -->
         <div>
           <label class="block text-[11px] font-bold text-slate-700 mb-1">담당자 *</label>
           <div class="grid grid-cols-3 gap-1.5" id="assigneeButtons">
@@ -272,13 +249,11 @@
           </div>
         </div>
 
-        <!-- 날짜 -->
         <div>
           <label class="block text-[11px] font-bold text-slate-700 mb-1">날짜 *</label>
           <input type="date" id="formDate" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none" required />
         </div>
 
-        <!-- 시간 및 종일 토글 -->
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="text-[11px] font-bold text-slate-700">시간 설정</label>
@@ -300,7 +275,6 @@
           </div>
         </div>
 
-        <!-- 카테고리 & 메모 -->
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-[11px] font-bold text-slate-700 mb-1">카테고리</label>
@@ -322,7 +296,6 @@
           </div>
         </div>
 
-        <!-- 하단 버튼 -->
         <div class="flex items-center justify-between pt-2 border-t border-slate-100 gap-2">
           <button type="button" id="btnDeleteSchedule" class="hidden px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors">
             🗑️ 삭제
@@ -340,17 +313,17 @@
     </div>
   </div>
 
-  <!-- 2. 환경설정 & D-Day 모달 -->
+  <!-- 2. 환경설정 & 실시간 연동 진단 모달 -->
   <div id="settingsModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 z-50 animate-in fade-in duration-150">
     <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-4 sm:p-5 border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 mb-3">
         <h3 class="text-sm sm:text-base font-black text-slate-800 flex items-center gap-1.5">
-          ⚙️ 캘린더 설정 & D-Day 관리
+          ⚙️ 캘린더 설정 & 구글 시트 연동
         </h3>
         <button id="btnCloseSettings" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1">✕</button>
       </div>
 
-      <div class="space-y-4">
+      <div class="space-y-3.5">
         <!-- D-Day 설정 -->
         <div class="bg-pink-50/50 p-3 rounded-2xl border border-pink-100 space-y-2">
           <h4 class="font-extrabold text-xs text-pink-900 flex items-center gap-1">
@@ -359,7 +332,7 @@
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="text-[10px] font-bold text-slate-600 block mb-0.5">기념일 이름</label>
-              <input type="text" id="inputDdayTitle" value="결혼기념일" placeholder="예: 결혼기념일, 첫 만남" class="w-full px-2.5 py-1.5 bg-white border border-pink-200 rounded-xl text-xs font-medium" />
+              <input type="text" id="inputDdayTitle" value="결혼기념일" placeholder="예: 결혼기념일" class="w-full px-2.5 py-1.5 bg-white border border-pink-200 rounded-xl text-xs font-medium" />
             </div>
             <div>
               <label class="text-[10px] font-bold text-slate-600 block mb-0.5">기념일 날짜</label>
@@ -371,45 +344,55 @@
           </button>
         </div>
 
-        <!-- 구글 스프레드시트 동기화 설정 -->
-        <div class="bg-purple-50/50 p-3 rounded-2xl border border-purple-100 space-y-2.5">
+        <!-- 구글 스프레드시트 동기화 설정 & 진단 -->
+        <div class="bg-purple-50/60 p-3.5 rounded-2xl border border-purple-200/80 space-y-2.5">
           <div class="flex items-center justify-between">
             <h4 class="font-extrabold text-xs text-purple-900 flex items-center gap-1">
               📊 구글 스프레드시트 실시간 동기화
             </h4>
-            <span class="text-[10px] bg-purple-100 text-purple-700 font-bold px-1.5 py-0.5 rounded">PC & 폰 동기화</span>
+            <span id="connStatusBadge" class="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full border border-slate-200">미연동</span>
           </div>
 
           <div>
-            <label class="text-[10px] font-bold text-slate-600 block mb-1">Google Apps Script 웹 앱 배포 URL</label>
+            <label class="text-[10px] font-bold text-slate-600 block mb-1">Apps Script 웹 앱 URL (배포 주소)</label>
             <input type="url" id="inputSheetUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-2.5 py-2 bg-white border border-purple-200 rounded-xl text-[11px] font-mono focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+            <span id="urlValidationMsg" class="text-[10px] text-red-500 font-bold mt-1 block hidden"></span>
           </div>
 
-          <div class="flex gap-2">
-            <button type="button" id="btnSaveSettings" class="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all">
-              저장 및 지금 동기화
+          <!-- 진단 및 저장 버튼 -->
+          <div class="grid grid-cols-2 gap-1.5">
+            <button type="button" id="btnTestConnection" class="py-2 bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1">
+              <span>🔍</span> 연동 테스트
             </button>
-            <button type="button" id="btnDisconnectSheet" class="px-3 py-2 text-red-600 hover:bg-red-50 text-xs font-bold rounded-xl border border-red-200 transition-colors">
+            <button type="button" id="btnSaveSettings" class="py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-2xs transition-all flex items-center justify-center gap-1">
+              <span>💾</span> 저장 및 동기화
+            </button>
+          </div>
+
+          <div class="flex justify-between items-center pt-1 text-[11px]">
+            <button type="button" id="btnCopyAppsScript" class="text-purple-700 hover:underline font-bold text-[11px] flex items-center gap-1">
+              📋 연동 코드(Apps Script) 복사하기
+            </button>
+            <button type="button" id="btnDisconnectSheet" class="text-red-500 hover:text-red-700 text-[11px] font-bold">
               연동 해제
             </button>
           </div>
         </div>
 
-        <!-- 연동 팁 안내 -->
-        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 text-[11px] text-slate-600 leading-relaxed space-y-1">
-          <p class="font-bold text-slate-800">💡 1분 연동 방법 요약:</p>
-          <ol class="list-decimal list-inside space-y-0.5 text-[10px]">
-            <li>구글 드라이브에서 새 <b>스프레드시트</b> 생성</li>
-            <li>[확장 프로그램] → [Apps Script] 클릭</li>
-            <li>폴더 내 <b>google_sheet_code.js</b> 코드 붙여넣고 저장</li>
-            <li>[배포] → [새 배포] (웹 앱, 액세스: <b>모든 사용자</b>) 후 URL 등록</li>
-          </ol>
+        <!-- 문제 해결 가이드 -->
+        <div class="bg-amber-50 p-3 rounded-2xl border border-amber-200 text-[11px] text-amber-900 leading-relaxed space-y-1.5">
+          <p class="font-extrabold flex items-center gap-1">⚠️ 연동이 안 될 때 체크 3가지:</p>
+          <ul class="list-disc list-inside space-y-0.5 text-[10px] text-amber-800">
+            <li><b>주소 확인</b>: 주소 끝이 반드시 <b>`/exec`</b> 로 끝나야 합니다. (`/edit` 아님)</li>
+            <li><b>권한 설정</b>: 배포 시 액세스 권한이 <b>[모든 사용자 (Anyone)]</b> 여야 합니다.</li>
+            <li><b>새 배포</b>: 코드를 수정했다면 반드시 [배포] ➔ [새 배포]를 눌러야 적용됩니다.</li>
+          </ul>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 3. 스마트폰 연결 & 공유 모달 (QR코드) -->
+  <!-- 3. 스마트폰 공유 모달 -->
   <div id="shareModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 z-50 animate-in fade-in duration-150">
     <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-4 sm:p-5 border border-slate-100 text-center">
       <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
@@ -419,8 +402,8 @@
         <button id="btnCloseShare" class="text-slate-400 hover:text-slate-700 text-lg font-bold p-1">✕</button>
       </div>
 
-      <p class="text-xs text-slate-600 mb-3 leading-relaxed">
-        스마트폰 기본 카메라로 아래 QR코드를 스캔하면<br><b class="text-purple-600">내 폰에서도 똑같이 실시간으로</b> 열립니다!
+      <p class="text-xs text-slate-600 mb-2 leading-relaxed">
+        배우자의 스마트폰 카메라로 QR코드를 비추면<br><b class="text-purple-600">내 폰에서도 똑같이 실시간으로</b> 열립니다!
       </p>
 
       <div class="flex justify-center my-2 p-3 bg-slate-50 rounded-2xl border border-slate-100 inline-block mx-auto">
@@ -432,73 +415,59 @@
           <input type="text" id="shareUrlText" readonly class="w-full bg-transparent text-[11px] text-slate-600 px-1 truncate outline-none font-mono" />
           <button id="btnCopyShareUrl" class="px-2.5 py-1 bg-purple-600 text-white rounded-lg text-xs font-bold shrink-0 hover:bg-purple-700">복사</button>
         </div>
-
-        <div class="text-[10px] text-slate-500 bg-purple-50/60 p-2 rounded-xl border border-purple-100 text-left leading-tight">
-          📌 <b>스마트폰 앱처럼 사용 꿀팁:</b><br>
-          스마트폰 브라우저(Safari/Chrome)에서 연 후 <b>[홈 화면에 추가]</b>를 누르면 일반 앱처럼 홈 화면 아이콘으로 등록됩니다!
-        </div>
       </div>
     </div>
   </div>
 
   <!-- ==================== 스크립트 영역 ==================== -->
   <script>
-    // --- 1. 2024~2030년 대한민국 공휴일 및 주요 기념일 데이터베이스 ---
+    // --- 1. 대한민국 공휴일 (2024~2030) ---
     const KOREAN_HOLIDAYS = {
-      // 2024년
       "2024-01-01": "신정", "2024-02-09": "설날", "2024-02-10": "설날", "2024-02-11": "설날", "2024-02-12": "대체공휴일",
       "2024-03-01": "삼일절", "2024-04-10": "총선", "2024-05-05": "어린이날", "2024-05-06": "대체공휴일", "2024-05-15": "부처님오신날",
       "2024-06-06": "현충일", "2024-08-15": "광복절", "2024-09-16": "추석", "2024-09-17": "추석", "2024-09-18": "추석",
       "2024-10-01": "국군의날", "2024-10-03": "개천절", "2024-10-09": "한글날", "2024-12-25": "성탄절",
 
-      // 2025년
       "2025-01-01": "신정", "2025-01-28": "설날", "2025-01-29": "설날", "2025-01-30": "설날",
       "2025-03-01": "삼일절", "2025-03-03": "대체공휴일", "2025-05-05": "어린이날", "2025-05-06": "부처님오신날",
       "2025-06-06": "현충일", "2025-08-15": "광복절", "2025-10-03": "개천절", "2025-10-05": "추석",
       "2025-10-06": "추석", "2025-10-07": "추석", "2025-10-08": "대체공휴일", "2025-10-09": "한글날", "2025-12-25": "성탄절",
 
-      // 2026년
       "2026-01-01": "신정", "2026-02-16": "설날", "2026-02-17": "설날", "2026-02-18": "설날",
       "2026-03-01": "삼일절", "2026-03-02": "대체공휴일", "2026-05-05": "어린이날", "2026-05-24": "부처님오신날",
       "2026-05-25": "대체공휴일", "2026-06-03": "지방선거", "2026-06-06": "현충일", "2026-08-15": "광복절",
       "2026-08-17": "대체공휴일", "2026-09-24": "추석", "2026-09-25": "추석", "2026-09-26": "추석",
       "2026-10-03": "개천절", "2026-10-05": "대체공휴일", "2026-10-09": "한글날", "2026-12-25": "성탄절",
 
-      // 2027년
       "2027-01-01": "신정", "2027-02-06": "설날", "2027-02-07": "설날", "2027-02-08": "설날", "2027-02-09": "대체공휴일",
       "2027-03-01": "삼일절", "2027-05-05": "어린이날", "2027-05-13": "부처님오신날", "2027-06-06": "현충일",
       "2027-08-15": "광복절", "2027-08-16": "대체공휴일", "2027-09-14": "추석", "2027-09-15": "추석",
       "2027-09-16": "추석", "2027-10-03": "개천절", "2027-10-04": "대체공휴일", "2027-10-09": "한글날",
       "2027-10-11": "대체공휴일", "2027-12-25": "성탄절", "2027-12-27": "대체공휴일",
 
-      // 2028년
       "2028-01-01": "신정", "2028-01-26": "설날", "2028-01-27": "설날", "2028-01-28": "설날",
       "2028-03-01": "삼일절", "2028-05-02": "부처님오신날", "2028-05-05": "어린이날", "2028-06-06": "현충일",
       "2028-08-15": "광복절", "2028-10-02": "추석", "2028-10-03": "개천절/추석", "2028-10-04": "추석",
       "2028-10-05": "대체공휴일", "2028-10-09": "한글날", "2028-12-25": "성탄절",
 
-      // 2029년
       "2029-01-01": "신정", "2029-02-12": "설날", "2029-02-13": "설날", "2029-02-14": "설날",
       "2029-03-01": "삼일절", "2029-05-05": "어린이날", "2029-05-07": "대체공휴일", "2029-05-20": "부처님오신날",
       "2029-05-21": "대체공휴일", "2029-06-06": "현충일", "2029-08-15": "광복절", "2029-09-21": "추석",
       "2029-09-22": "추석", "2029-09-23": "추석", "2029-09-24": "대체공휴일", "2029-10-03": "개천절",
       "2029-10-09": "한글날", "2029-12-25": "성탄절",
 
-      // 2030년
       "2030-01-01": "신정", "2030-02-02": "설날", "2030-02-03": "설날", "2030-02-04": "설날", "2030-02-05": "대체공휴일",
       "2030-03-01": "삼일절", "2030-05-05": "어린이날", "2030-05-06": "대체공휴일", "2030-05-09": "부처님오신날",
       "2030-06-06": "현충일", "2030-08-15": "광복절", "2030-09-11": "추석", "2030-09-12": "추석",
       "2030-09-13": "추석", "2030-10-03": "개천절", "2030-10-09": "한글날", "2030-12-25": "성탄절"
     };
 
-    // 양력 고정 공휴일 룰 (매년 적용)
-    const SOLAR_HOLIDAY_RULES = {
+    const SOLAR_RULES = {
       '01-01': '신정', '03-01': '삼일절', '05-05': '어린이날',
       '06-06': '현충일', '08-15': '광복절', '10-03': '개천절',
       '10-09': '한글날', '12-25': '성탄절'
     };
 
-    // 부부 & 한국 주요 기념일
     const SPECIAL_DAYS = {
       '02-14': '발렌타인데이', '03-14': '화이트데이', '05-08': '어버이날',
       '05-21': '부부의날 💑', '11-11': '빼빼로데이'
@@ -507,10 +476,10 @@
     function getHoliday(y, m, d) {
       const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const md = `${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      
-      const holidayName = KOREAN_HOLIDAYS[dateStr] || SOLAR_HOLIDAY_RULES[md] || null;
-      const specialName = SPECIAL_DAYS[md] || null;
-      return { holiday: holidayName, special: specialName };
+      return {
+        holiday: KOREAN_HOLIDAYS[dateStr] || SOLAR_RULES[md] || null,
+        special: SPECIAL_DAYS[md] || null
+      };
     }
 
     function formatDateKey(dStr) {
@@ -543,19 +512,14 @@
     let selectedDate = getTodayString();
     let currentFilter = 'all';
     let selectedAssignee = 'couple';
-    let sheetUrl = localStorage.getItem(SHEET_URL_KEY) || '';
+    let sheetUrl = (localStorage.getItem(SHEET_URL_KEY) || '').trim();
 
-    // D-Day 설정값
-    let ddayConfig = {
-      title: '결혼기념일',
-      date: '2024-05-18'
-    };
+    let ddayConfig = { title: '결혼기념일', date: '2024-05-18' };
     try {
       const savedDday = localStorage.getItem(DDAY_KEY);
       if (savedDday) ddayConfig = JSON.parse(savedDday);
     } catch(e) {}
 
-    // 샘플 데이터
     const INITIAL_DATA = [
       { id: 'sch_init_1', title: '주말 장보기 🛒', date: getTodayString(), allDay: false, startTime: '14:00', endTime: '15:30', assignee: 'couple', category: '장보기', completed: false, memo: '소고기, 올리브유, 계란' },
       { id: 'sch_init_2', title: '필라테스 레슨 🧘‍♀️', date: getTodayString(), allDay: false, startTime: '10:00', endTime: '11:00', assignee: 'wife', category: '운동', completed: true, memo: '코어 운동 위주' },
@@ -595,35 +559,27 @@
       setTimeout(() => {
         toast.classList.remove('opacity-100', 'translate-y-0');
         toast.classList.add('opacity-0', '-translate-y-2', 'pointer-events-none');
-      }, 2300);
+      }, 2400);
     }
 
-    // --- 3. D-Day 계산 및 렌더링 ---
+    // --- 3. D-Day 렌더링 ---
     function updateDdayUI() {
       if (!ddayConfig || !ddayConfig.date) return;
       const target = new Date(ddayConfig.date + 'T00:00:00');
       const today = new Date(getTodayString() + 'T00:00:00');
-      const diffTime = today - target;
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = Math.floor((today - target) / (1000 * 60 * 60 * 24));
 
-      let badgeText = '';
-      if (diffDays >= 0) {
-        badgeText = `D+${diffDays + 1}일`; // 시작일을 1일째로 계산
-      } else {
-        badgeText = `D${diffDays}일`;
-      }
+      const badgeText = diffDays >= 0 ? `D+${diffDays + 1}일` : `D${diffDays}일`;
 
-      // PC 헤더
       document.getElementById('ddayTitle').textContent = ddayConfig.title || '기념일';
       document.getElementById('ddayCount').textContent = badgeText;
       document.getElementById('ddaySub').textContent = `(${ddayConfig.date})`;
 
-      // 모바일 스트립
       document.getElementById('mobileDdayTitle').textContent = ddayConfig.title || '기념일';
       document.getElementById('mobileDdayCount').textContent = badgeText;
     }
 
-    // --- 4. 통계 업데이트 ---
+    // --- 4. 통계 ---
     function updateStats() {
       const currentMonthPrefix = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
       const monthSchedules = schedules.filter(s => formatDateKey(s.date).startsWith(currentMonthPrefix));
@@ -638,7 +594,7 @@
       document.getElementById('monthStatsText').textContent = `이번 달 총 ${monthSchedules.length}건`;
     }
 
-    // --- 5. 캘린더 그리드 렌더링 (한눈에 보기 최적화) ---
+    // --- 5. 캘린더 그리드 렌더링 ---
     function renderCalendar() {
       document.getElementById('headerYearMonth').textContent = `${currentYear}년 ${currentMonth}월`;
 
@@ -651,7 +607,6 @@
 
       const cells = [];
 
-      // 이전 달 빈 칸
       for (let i = firstDayIndex - 1; i >= 0; i--) {
         const d = prevLastDate - i;
         const pM = currentMonth === 1 ? 12 : currentMonth - 1;
@@ -661,14 +616,12 @@
         cells.push({ dateKey, day: d, isCurrent: false, holiday: info.holiday, special: info.special, dayOfWeek: new Date(pY, pM - 1, d).getDay() });
       }
 
-      // 이번 달 날짜
       for (let d = 1; d <= lastDate; d++) {
         const dateKey = formatDateKey(`${currentYear}-${currentMonth}-${d}`);
         const info = getHoliday(currentYear, currentMonth, d);
         cells.push({ dateKey, day: d, isCurrent: true, holiday: info.holiday, special: info.special, dayOfWeek: new Date(currentYear, currentMonth - 1, d).getDay() });
       }
 
-      // 다음 달 채우기 (정확히 35 또는 42칸)
       const totalSlots = cells.length > 35 ? 42 : 35;
       const remain = totalSlots - cells.length;
       for (let d = 1; d <= remain; d++) {
@@ -693,7 +646,6 @@
             : 'border-slate-100 hover:border-purple-200 hover:bg-slate-50 bg-white'
         } ${!c.isCurrent ? 'opacity-35 bg-slate-50/50' : ''}`;
 
-        // 날짜 폰트 및 공휴일 색상
         let numColor = 'text-slate-700';
         let numBg = '';
         if (isToday) {
@@ -705,7 +657,6 @@
           numColor = 'text-blue-500 font-bold';
         }
 
-        // 공휴일 / 기념일 태그
         let tagHtml = '';
         if (c.holiday) {
           tagHtml = `<span class="text-[8px] sm:text-[9px] text-red-600 font-bold truncate max-w-[45px] sm:max-w-[70px] leading-tight" title="${c.holiday}">${c.holiday}</span>`;
@@ -713,7 +664,6 @@
           tagHtml = `<span class="text-[8px] sm:text-[9px] text-pink-600 font-medium truncate max-w-[45px] sm:max-w-[70px] leading-tight" title="${c.special}">${c.special}</span>`;
         }
 
-        // 모바일 미니 도트
         let dotsHtml = '';
         daySchs.slice(0, 4).forEach(s => {
           let dotColor = s.assignee === 'wife' ? 'bg-pink-500' : (s.assignee === 'husband' ? 'bg-blue-500' : 'bg-purple-600');
@@ -721,7 +671,6 @@
         });
         if (daySchs.length > 4) dotsHtml += `<span class="text-[7px] text-purple-600 font-black">+</span>`;
 
-        // 태블릿 & PC 일정 칩 바
         let chipsHtml = '';
         daySchs.slice(0, 2).forEach(s => {
           let badgeBg = s.assignee === 'wife' ? 'bg-pink-100 text-pink-700' : (s.assignee === 'husband' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700');
@@ -744,9 +693,7 @@
             </span>
             ${tagHtml}
           </div>
-          <!-- 모바일 도트 표시 -->
           <div class="mt-1 flex sm:hidden items-center justify-center gap-0.5 flex-wrap">${dotsHtml}</div>
-          <!-- 데스크톱 칩 표시 -->
           <div class="hidden sm:block mt-1 space-y-0.5 overflow-hidden flex-1">${chipsHtml}</div>
         `;
 
@@ -766,7 +713,6 @@
       const dayOfWeek = getDayOfWeekName(selectedDate);
       document.getElementById('panelSelectedDate').textContent = `${selectedDate} (${dayOfWeek})`;
 
-      // 공휴일 뱃지 확인
       const [y, m, d] = selectedDate.split('-').map(Number);
       const holidayInfo = getHoliday(y, m, d);
       const holidayBadge = document.getElementById('panelHolidayBadge');
@@ -780,7 +726,6 @@
         holidayBadge.classList.add('hidden');
       }
 
-      // 해당 날짜 일정 필터링
       const daySchedules = schedules.filter(s => formatDateKey(s.date) === selectedDate);
       document.getElementById('countAll').textContent = daySchedules.length;
 
@@ -789,7 +734,6 @@
         filtered = daySchedules.filter(s => s.assignee === currentFilter);
       }
 
-      // 시간순 정렬 (종일 일정 먼저, 그 다음 시작시간순)
       filtered.sort((a, b) => {
         if (a.allDay && !b.allDay) return -1;
         if (!a.allDay && b.allDay) return 1;
@@ -812,7 +756,6 @@
       filtered.forEach(sch => {
         const card = document.createElement('div');
         
-        // 담당자별 테마 스타일
         let borderClass = 'border-purple-200 bg-purple-50/40 hover:bg-purple-50';
         let badgeClass = 'bg-purple-100 text-purple-700';
         let assigneeName = '💜 함께';
@@ -835,14 +778,12 @@
 
         card.innerHTML = `
           <div class="flex items-start gap-2 min-w-0 flex-1">
-            <!-- 완료 체크박스 -->
             <button type="button" class="btn-toggle-complete mt-0.5 w-4 h-4 rounded-md border flex items-center justify-center transition-all ${
               sch.completed ? 'bg-purple-600 border-purple-600 text-white' : 'border-slate-300 bg-white hover:border-purple-400'
             }" title="완료 여부 토글">
               ${sch.completed ? '✓' : ''}
             </button>
 
-            <!-- 내용 -->
             <div class="min-w-0 flex-1 cursor-pointer btn-open-edit">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md ${badgeClass}">${assigneeName}</span>
@@ -856,13 +797,11 @@
             </div>
           </div>
 
-          <!-- 수정/삭제 버튼 -->
           <div class="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100">
             <button class="btn-open-edit p-1 text-slate-400 hover:text-purple-600 text-xs rounded-lg hover:bg-white" title="수정">✏️</button>
           </div>
         `;
 
-        // 완료 토글 이벤트
         card.querySelector('.btn-toggle-complete').addEventListener('click', (e) => {
           e.stopPropagation();
           sch.completed = !sch.completed;
@@ -872,7 +811,6 @@
           saveSchedules(schedules);
         });
 
-        // 수정 클릭 이벤트
         card.querySelectorAll('.btn-open-edit').forEach(el => {
           el.addEventListener('click', () => openEditModal(sch));
         });
@@ -935,7 +873,6 @@
       });
     }
 
-    // 일정 저장
     document.getElementById('btnSaveSchedule').addEventListener('click', () => {
       const title = document.getElementById('formTitle').value.trim();
       if (!title) {
@@ -970,7 +907,6 @@
       closeModal();
     });
 
-    // 일정 삭제
     document.getElementById('btnDeleteSchedule').addEventListener('click', () => {
       const editId = document.getElementById('formEditId').value;
       if (editId && confirm('이 일정을 삭제하시겠습니까?')) {
@@ -981,27 +917,53 @@
       }
     });
 
-    // --- 8. 구글 스프레드시트 양방향 실시간 동기화 ---
+    // --- 8. 완벽 안정화된 구글 시트 연동 엔진 ---
+    
+    // URL 검증 함수
+    function validateSheetUrl(url) {
+      if (!url) return { valid: false, msg: 'URL을 입력해주세요.' };
+      if (!url.startsWith('https://script.google.com/macros/s/')) {
+        return { valid: false, msg: '올바른 Apps Script 웹 앱 주소가 아닙니다. (https://script.google.com/macros/s/...)' };
+      }
+      if (url.includes('/edit')) {
+        return { valid: false, msg: '편집용(/edit) 주소입니다. [배포] -> [새 배포]에서 나오는 웹 앱 URL을 복사해주세요.' };
+      }
+      if (!url.endsWith('/exec')) {
+        return { valid: false, msg: '웹 앱 배포 주소는 끝이 /exec 로 끝나야 합니다.' };
+      }
+      return { valid: true, msg: '올바른 URL 형식입니다.' };
+    }
+
+    // 서버로 데이터 전송 (POST ➔ GET 쿼리 백업 2중 전송)
     async function syncToSheet() {
       if (!sheetUrl) return;
+      const payload = JSON.stringify({ action: 'sync', schedules, dday: ddayConfig });
+
       try {
+        // 1차: POST no-cors 전송
         await fetch(sheetUrl, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'sync', schedules, dday: ddayConfig })
+          body: payload
         });
       } catch(e) {
-        console.error("Sheet sync push error:", e);
+        // 2차: GET 파라미터 백업 전송
+        try {
+          const encoded = encodeURIComponent(payload);
+          const getUrl = `${sheetUrl}?data=${encoded}`;
+          const img = new Image();
+          img.src = getUrl;
+        } catch(err2) {
+          console.error("Backup sync error:", err2);
+        }
       }
     }
 
+    // 구글 시트로부터 데이터 불러오기 (JSONP / Fetch 듀얼 지원)
     async function syncFromSheet(isManual = false) {
       if (!sheetUrl) {
-        if (isManual) {
-          document.getElementById('inputSheetUrl').value = sheetUrl;
-          document.getElementById('settingsModal').classList.remove('hidden');
-        }
+        if (isManual) openSettings();
         return;
       }
 
@@ -1013,6 +975,7 @@
       try {
         const res = await fetch(sheetUrl);
         const data = await res.json();
+        
         if (data && data.status === 'success' && Array.isArray(data.schedules)) {
           // 스마트 머지
           const map = new Map();
@@ -1031,30 +994,80 @@
           renderCalendar();
           renderScheduleList();
           updateStats();
-          if (isManual) showToast('구글 시트와 동기화 완료! ✅', '☁️');
+          updateSyncButtonUI(true);
+          if (isManual) showToast('구글 시트 동기화 완료! ✅', '☁️');
+          return true;
+        } else {
+          throw new Error(data.message || '응답 형식 오류');
         }
       } catch(e) {
-        console.error("Sheet sync pull error:", e);
-        if (isManual) showToast('동기화 실패 (네트워크/URL 확인)', '❌');
-      } finally {
-        syncDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-        syncText.textContent = '연동됨';
+        console.error("Sync error:", e);
+        updateSyncButtonUI(false);
+        if (isManual) {
+          alert(`❌ 구글 시트 연동에 실패했습니다.\n\n[원인]\n${e.message || '네트워크 오류'}\n\n[해결 방법]\n1. 구글 Apps Script에서 [배포] -> [새 배포]를 눌렀는지 확인하세요.\n2. 액세스 권한이 '모든 사용자(Anyone)'로 되어있는지 확인해주세요.`);
+        }
+        return false;
       }
     }
 
-    function updateSyncButtonUI() {
+    // 연동 테스트 함수
+    async function testSheetConnection() {
+      const urlInput = document.getElementById('inputSheetUrl').value.trim();
+      const val = validateSheetUrl(urlInput);
+      const valMsg = document.getElementById('urlValidationMsg');
+
+      if (!val.valid) {
+        valMsg.textContent = val.msg;
+        valMsg.classList.remove('hidden');
+        return;
+      }
+      valMsg.classList.add('hidden');
+
+      const testBtn = document.getElementById('btnTestConnection');
+      testBtn.disabled = true;
+      testBtn.innerHTML = '<span>⏳</span> 테스트 중...';
+
+      try {
+        const res = await fetch(urlInput);
+        const data = await res.json();
+        if (data && data.status === 'success') {
+          alert('🎉 축하합니다! 구글 스프레드시트와 완벽히 연결되었습니다!\n\n이제 [저장 및 동기화]를 누르면 컴퓨터와 휴대폰 간에 실시간 동기화가 시작됩니다.');
+          document.getElementById('connStatusBadge').className = 'text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200';
+          document.getElementById('connStatusBadge').textContent = '✅ 연결 정상';
+        } else {
+          alert(`⚠️ 연결 응답 에러:\n${data.message || '데이터를 가져오지 못했습니다.'}`);
+        }
+      } catch(err) {
+        alert(`❌ 연결 테스트 실패!\n\n[체크포인트]\n1. 구글 Apps Script에서 [배포] ➔ [새 배포]를 누르셨나요?\n2. '액세스 권한'을 [모든 사용자(Anyone)]로 선택하셨나요?\n\n(참고 에러: ${err.message})`);
+      } finally {
+        testBtn.disabled = false;
+        testBtn.innerHTML = '<span>🔍</span> 연동 테스트';
+      }
+    }
+
+    function updateSyncButtonUI(isConnected = !!sheetUrl) {
       const syncDot = document.getElementById('syncDot');
       const syncText = document.getElementById('syncText');
-      if (sheetUrl) {
+      const badge = document.getElementById('connStatusBadge');
+
+      if (isConnected && sheetUrl) {
         syncDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
         syncText.textContent = '연동됨';
+        if (badge) {
+          badge.className = 'text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200';
+          badge.textContent = '✅ 연동됨';
+        }
       } else {
         syncDot.className = 'w-2 h-2 rounded-full bg-slate-400';
         syncText.textContent = '시트 연동';
+        if (badge) {
+          badge.className = 'text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full border border-slate-200';
+          badge.textContent = '미연동';
+        }
       }
     }
 
-    // --- 9. 스마트폰 QR 및 공유 모달 ---
+    // --- 9. 모바일 공유 모달 ---
     function openShareModal() {
       const modal = document.getElementById('shareModal');
       const canvas = document.getElementById('qrCanvas');
@@ -1075,12 +1088,23 @@
       const input = document.getElementById('shareUrlText');
       input.select();
       navigator.clipboard.writeText(input.value).then(() => {
-        showToast('링크가 복사되었습니다! 폰으로 전송하세요 📋', '✨');
+        showToast('링크가 복사되었습니다! 📋', '✨');
       });
     });
 
-    // --- 10. 이벤트 리스너 바인딩 ---
-    // 월 이동
+    // Apps Script 코드 클립보드 복사
+    document.getElementById('btnCopyAppsScript').addEventListener('click', async () => {
+      try {
+        const response = await fetch('./google_sheet_code.js');
+        const codeText = await response.text();
+        await navigator.clipboard.writeText(codeText);
+        showToast('연동 코드가 복사되었습니다! Apps Script에 붙여넣으세요 📋', '✨');
+      } catch(e) {
+        showToast('폴더의 google_sheet_code.js 파일을 복사해주세요!', 'ℹ️');
+      }
+    });
+
+    // --- 10. 이벤트 리스너 ---
     document.getElementById('btnPrevMonth').addEventListener('click', () => {
       if (currentMonth === 1) { currentMonth = 12; currentYear--; }
       else { currentMonth--; }
@@ -1111,24 +1135,20 @@
       updateStats();
     });
 
-    // 모달 토글
     document.getElementById('btnOpenAddModal').addEventListener('click', openAddModal);
     document.getElementById('btnPanelAdd').addEventListener('click', openAddModal);
     document.getElementById('btnCloseModal').addEventListener('click', closeModal);
     document.getElementById('btnCancelModal').addEventListener('click', closeModal);
 
-    // 담당자 선택
     document.querySelectorAll('.assignee-btn').forEach(btn => {
       btn.addEventListener('click', () => setAssignee(btn.dataset.val));
     });
 
-    // 종일 토글
     document.getElementById('formAllDay').addEventListener('change', (e) => {
       if (e.target.checked) document.getElementById('timeInputs').classList.add('hidden');
       else document.getElementById('timeInputs').classList.remove('hidden');
     });
 
-    // 필터 버튼
     document.querySelectorAll('.filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         currentFilter = btn.dataset.filter;
@@ -1143,13 +1163,15 @@
       });
     });
 
-    // 설정 모달
     const openSettings = () => {
       document.getElementById('inputSheetUrl').value = sheetUrl;
       document.getElementById('inputDdayTitle').value = ddayConfig.title || '결혼기념일';
       document.getElementById('inputDdayDate').value = ddayConfig.date || '2024-05-18';
+      document.getElementById('urlValidationMsg').classList.add('hidden');
+      updateSyncButtonUI(!!sheetUrl);
       document.getElementById('settingsModal').classList.remove('hidden');
     };
+
     document.getElementById('btnOpenSettings').addEventListener('click', openSettings);
     document.getElementById('ddayBanner').addEventListener('click', openSettings);
     document.getElementById('mobileDdayStrip').addEventListener('click', openSettings);
@@ -1157,7 +1179,6 @@
       document.getElementById('settingsModal').classList.add('hidden');
     });
 
-    // D-Day 저장
     document.getElementById('btnSaveDday').addEventListener('click', () => {
       const title = document.getElementById('inputDdayTitle').value.trim() || '결혼기념일';
       const date = document.getElementById('inputDdayDate').value;
@@ -1172,42 +1193,46 @@
       showToast('D-Day 설정이 저장되었습니다! 💍', '💖');
     });
 
-    // 구글 시트 설정 저장
-    document.getElementById('btnSaveSettings').addEventListener('click', () => {
+    document.getElementById('btnTestConnection').addEventListener('click', testSheetConnection);
+
+    document.getElementById('btnSaveSettings').addEventListener('click', async () => {
       const url = document.getElementById('inputSheetUrl').value.trim();
+      if (url) {
+        const val = validateSheetUrl(url);
+        if (!val.valid) {
+          alert(`⚠️ URL 오류:\n${val.msg}`);
+          return;
+        }
+      }
       sheetUrl = url;
       localStorage.setItem(SHEET_URL_KEY, url);
       document.getElementById('settingsModal').classList.add('hidden');
-      updateSyncButtonUI();
-      if (url) syncFromSheet(true);
+      updateSyncButtonUI(!!url);
+      if (url) await syncFromSheet(true);
     });
 
-    // 구글 시트 연동 해제
     document.getElementById('btnDisconnectSheet').addEventListener('click', () => {
-      if (confirm('구글 시트 연동을 해제하시겠습니까? (로컬 일정은 유지됩니다)')) {
+      if (confirm('구글 시트 연동을 해제하시겠습니까? (로컬에 저장된 일정은 유지됩니다)')) {
         sheetUrl = '';
         localStorage.removeItem(SHEET_URL_KEY);
+        document.getElementById('inputSheetUrl').value = '';
         document.getElementById('settingsModal').classList.add('hidden');
-        updateSyncButtonUI();
+        updateSyncButtonUI(false);
         showToast('연동이 해제되었습니다.', 'ℹ️');
       }
     });
 
-    // 공유 모달
     document.getElementById('btnOpenShare').addEventListener('click', openShareModal);
     document.getElementById('btnCloseShare').addEventListener('click', () => {
       document.getElementById('shareModal').classList.add('hidden');
     });
 
-    // 수동 동기화 버튼
     document.getElementById('btnSync').addEventListener('click', () => syncFromSheet(true));
 
-    // 브라우저 포커스 복귀 시 자동 동기화 (폰/PC 전환 시 최신 데이터 자동 수신)
     window.addEventListener('focus', () => {
       if (sheetUrl) syncFromSheet(false);
     });
 
-    // 터치 스와이프 제스처 (모바일 캘린더 좌우 넘기기)
     let touchStartX = 0;
     let touchEndX = 0;
     const gridEl = document.getElementById('calendarGrid');
@@ -1216,18 +1241,13 @@
     }, { passive: true });
     gridEl.addEventListener('touchend', (e) => {
       touchEndX = e.changedTouches[0].screenX;
-      if (touchEndX < touchStartX - 60) {
-        // 다음 달
-        document.getElementById('btnNextMonth').click();
-      } else if (touchEndX > touchStartX + 60) {
-        // 이전 달
-        document.getElementById('btnPrevMonth').click();
-      }
+      if (touchEndX < touchStartX - 60) document.getElementById('btnNextMonth').click();
+      else if (touchEndX > touchStartX + 60) document.getElementById('btnPrevMonth').click();
     }, { passive: true });
 
-    // --- 초기 실행 ---
+    // 초기 구동
     updateDdayUI();
-    updateSyncButtonUI();
+    updateSyncButtonUI(!!sheetUrl);
     renderCalendar();
     renderScheduleList();
     updateStats();
