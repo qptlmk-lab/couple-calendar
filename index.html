@@ -81,7 +81,7 @@
   <div id="root" class="h-full flex flex-col min-h-0"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo, useCallback } = React;
+    const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
     // --- 대한민국 공휴일 데이터 ---
     const KOREAN_HOLIDAYS = {
@@ -133,8 +133,7 @@
     const INITIAL_SCHEDULES = [
       { id: 'sch_1', title: '마트 장보기 🛒', date: getTodayString(), allDay: false, startTime: '14:00', endTime: '15:30', assignee: 'couple', category: '장보기', completed: false, memo: '소고기, 올리브유' },
       { id: 'sch_2', title: '필라테스', date: getTodayString(), allDay: false, startTime: '10:30', endTime: '11:30', assignee: 'wife', category: '운동', completed: true, memo: '코어 운동' },
-      { id: 'sch_3', title: '세차 & 점검', date: getTodayString(), allDay: false, startTime: '16:00', endTime: '17:30', assignee: 'husband', category: '집안일', completed: false, memo: '엔진오일' },
-      { id: 'sch_4', title: '기념일 디너 🥂', date: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0], allDay: false, startTime: '19:00', endTime: '21:00', assignee: 'couple', category: '기념일', completed: false, memo: '예약 완료' }
+      { id: 'sch_3', title: '세차 & 점검', date: getTodayString(), allDay: false, startTime: '16:00', endTime: '17:30', assignee: 'husband', category: '집안일', completed: false, memo: '엔진오일' }
     ];
 
     function App() {
@@ -144,10 +143,24 @@
       const [sheetUrl, setSheetUrl] = useState(() => localStorage.getItem('google_sheet_webapp_url') || '');
       const [isSyncing, setIsSyncing] = useState(false);
 
+      // 마지막 로컬 수정 시간 (서버 fetch로 방금 작성한 글 덮어쓰기 방지)
+      const lastLocalChangeTimeRef = useRef(0);
+
+      // 일정 상태 (LocalStorage에서 최우선 로드)
       const [schedules, setSchedules] = useState(() => {
         try {
-          const saved = localStorage.getItem('couple_schedules_v2');
-          return saved ? JSON.parse(saved) : INITIAL_SCHEDULES;
+          const saved = localStorage.getItem('couple_schedules_v3');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+          // v2 fallback
+          const savedV2 = localStorage.getItem('couple_schedules_v2');
+          if (savedV2) {
+            const parsed = JSON.parse(savedV2);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+          return INITIAL_SCHEDULES;
         } catch(e) {
           return INITIAL_SCHEDULES;
         }
@@ -171,19 +184,32 @@
       const [isSettingsOpen, setIsSettingsOpen] = useState(false);
       const [inputSheetUrl, setInputSheetUrl] = useState(sheetUrl);
 
-      useEffect(() => {
-        localStorage.setItem('couple_schedules_v2', JSON.stringify(schedules));
-      }, [schedules]);
+      // 일정 변경 시 즉시 LocalStorage에 강제 저장
+      const saveSchedulesToLocal = (newSchedules) => {
+        setSchedules(newSchedules);
+        localStorage.setItem('couple_schedules_v3', JSON.stringify(newSchedules));
+        lastLocalChangeTimeRef.current = Date.now();
+      };
 
-      // 구글 시트 동기화
+      // 구글 시트에서 최신 일정 불러오기
       const fetchFromGoogleSheet = useCallback(async (urlToFetch = sheetUrl) => {
         if (!urlToFetch || !urlToFetch.startsWith('http')) return;
+        
+        // 방금 10초 이내에 로컬에서 작성/수정한 내용이 있다면 덮어쓰기 방지
+        if (Date.now() - lastLocalChangeTimeRef.current < 10000) {
+          return;
+        }
+
         setIsSyncing(true);
         try {
           const response = await fetch(urlToFetch);
           const data = await response.json();
           if (data && data.status === 'success' && Array.isArray(data.schedules)) {
-            setSchedules(data.schedules);
+            // 서버에서 온 데이터가 있을 때만 안전하게 업데이트
+            if (data.schedules.length > 0) {
+              setSchedules(data.schedules);
+              localStorage.setItem('couple_schedules_v3', JSON.stringify(data.schedules));
+            }
           }
         } catch (err) {
           console.error('Fetch error:', err);
@@ -192,6 +218,7 @@
         }
       }, [sheetUrl]);
 
+      // 구글 시트로 일정 푸시 (POST)
       const pushToGoogleSheet = async (newSchedules, urlToPush = sheetUrl) => {
         if (!urlToPush || !urlToPush.startsWith('http')) return;
         setIsSyncing(true);
@@ -199,7 +226,7 @@
           await fetch(urlToPush, {
             method: 'POST',
             mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'sync', schedules: newSchedules })
           });
         } catch (err) {
@@ -209,11 +236,11 @@
         }
       };
 
+      // 초기 로드 시 구글 시트 동기화
       useEffect(() => {
-        if (sheetUrl) fetchFromGoogleSheet();
-        const handleFocus = () => { if (sheetUrl) fetchFromGoogleSheet(); };
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
+        if (sheetUrl) {
+          fetchFromGoogleSheet();
+        }
       }, [sheetUrl, fetchFromGoogleSheet]);
 
       const currentYear = currentDate.getFullYear();
@@ -227,7 +254,7 @@
         setSelectedDate(getTodayString());
       };
 
-      // 달력 그리드 계산 (월 42 or 35칸 고정)
+      // 달력 그리드 계산
       const calendarDays = useMemo(() => {
         const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
         const lastDate = new Date(currentYear, currentMonth, 0).getDate();
@@ -305,6 +332,7 @@
         setIsModalOpen(true);
       };
 
+      // 일정 저장 (로컬에 즉시 영구 저장 + 구글 시트 비동기 동기화)
       const handleSaveSchedule = (e) => {
         e.preventDefault();
         if (!formTitle.trim()) return;
@@ -324,7 +352,7 @@
           } : s);
         } else {
           const newSchedule = {
-            id: 'sch_' + Date.now(),
+            id: 'sch_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
             title: formTitle.trim(),
             date: formDate,
             allDay: formAllDay,
@@ -338,21 +366,28 @@
           nextSchedules = [...schedules, newSchedule];
         }
 
-        setSchedules(nextSchedules);
+        // 1. 로컬 스토리지에 즉각 안전하게 저장
+        saveSchedulesToLocal(nextSchedules);
         setSelectedDate(formDate);
         setIsModalOpen(false);
-        if (sheetUrl) pushToGoogleSheet(nextSchedules);
+
+        // 2. 구글 시트로 백그라운드 전송
+        if (sheetUrl) {
+          pushToGoogleSheet(nextSchedules);
+        }
       };
 
+      // 일정 삭제
       const handleDeleteSchedule = (id) => {
         if (confirm('이 일정을 삭제하시겠습니까?')) {
           const nextSchedules = schedules.filter(s => s.id !== id);
-          setSchedules(nextSchedules);
+          saveSchedulesToLocal(nextSchedules);
           if (editingSchedule && editingSchedule.id === id) setIsModalOpen(false);
           if (sheetUrl) pushToGoogleSheet(nextSchedules);
         }
       };
 
+      // 완료 체크 토글
       const handleToggleComplete = (id) => {
         const nextSchedules = schedules.map(s => {
           if (s.id === id) {
@@ -364,17 +399,21 @@
           }
           return s;
         });
-        setSchedules(nextSchedules);
+        saveSchedulesToLocal(nextSchedules);
         if (sheetUrl) pushToGoogleSheet(nextSchedules);
       };
 
+      // 구글 시트 URL 저장
       const handleSaveSheetUrl = (e) => {
         e.preventDefault();
         const trimmed = inputSheetUrl.trim();
         setSheetUrl(trimmed);
         localStorage.setItem('google_sheet_webapp_url', trimmed);
         setIsSettingsOpen(false);
-        if (trimmed) fetchFromGoogleSheet(trimmed);
+        if (trimmed) {
+          // 저장 후 현재 로컬 일정을 시트로 먼저 전송
+          pushToGoogleSheet(schedules, trimmed);
+        }
       };
 
       const selectedDateSchedules = useMemo(() => {
@@ -434,7 +473,7 @@
                   onClick={() => { setInputSheetUrl(sheetUrl); setIsSettingsOpen(true); }}
                   className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[11px] font-bold flex items-center gap-1"
                 >
-                  <span>⚡</span> <span className="hidden sm:inline">연동</span>
+                  <span>⚡</span> <span className="hidden sm:inline">구글 시트 연동</span>
                 </button>
               )}
 
@@ -458,7 +497,7 @@
           {/* 2. 모바일 & 데스크톱 1페이지 뷰포트 레이아웃 */}
           <main className="flex-1 flex flex-col md:grid md:grid-cols-12 gap-1.5 min-h-0 overflow-hidden">
             
-            {/* 캘린더 영역 (모바일에서는 상단 58%, 데스크톱에서는 좌측 8열) */}
+            {/* 캘린더 영역 (모바일 상단 58%, 데스크톱 좌측 8열) */}
             <div className="h-[58%] md:h-full md:col-span-8 lg:col-span-8 bg-white rounded-xl shadow-xs border border-slate-200 p-1.5 sm:p-2.5 flex flex-col min-h-0">
               
               {/* 요일 헤더 */}
@@ -472,7 +511,7 @@
                 <div className="text-blue-500">토</div>
               </div>
 
-              {/* 날짜 그리드 (모바일 화면에 맞춰 7x6 꽉 차게 flex-1) */}
+              {/* 날짜 그리드 */}
               <div className="grid grid-cols-7 gap-0.5 sm:gap-1 flex-1 min-h-0 select-none">
                 {calendarDays.map((dObj, idx) => {
                   const isSelected = dObj.dateStr === selectedDate;
@@ -492,7 +531,7 @@
                           : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50/80 bg-white'
                       } ${!dObj.isCurrentMonth ? 'opacity-30 bg-slate-50/40' : ''}`}
                     >
-                      {/* 날짜 숫자 & 공휴일 표시 */}
+                      {/* 날짜 숫자 & 공휴일 */}
                       <div className="flex items-center justify-between shrink-0 leading-none">
                         <span
                           className={`text-[10px] sm:text-xs font-bold inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 rounded-full ${
@@ -515,10 +554,10 @@
                         )}
                       </div>
 
-                      {/* 모바일 화면용 일정 도트/미니칩 */}
+                      {/* 모바일 화면용 일정 도트 */}
                       <div className="mt-0.5 space-y-0.5 overflow-hidden flex-1">
                         
-                        {/* 모바일 작은 화면용 도트 뷰 (sm 이하) */}
+                        {/* 모바일 도트 (sm 이하) */}
                         <div className="flex sm:hidden items-center justify-center gap-0.5 flex-wrap pt-0.5">
                           {daySchedules.slice(0, 4).map((sch) => {
                             const style = getAssigneeStyle(sch.assignee);
@@ -534,7 +573,7 @@
                           )}
                         </div>
 
-                        {/* 태블릿/PC 화면용 텍스트 칩 뷰 (sm 이상) */}
+                        {/* 태블릿/PC 텍스트 칩 (sm 이상) */}
                         <div className="hidden sm:block space-y-0.5">
                           {daySchedules.slice(0, 2).map((sch) => {
                             const style = getAssigneeStyle(sch.assignee);
@@ -565,7 +604,7 @@
 
             </div>
 
-            {/* 선택 날짜 상세 일정 패널 (모바일에서는 하단 42%, 데스크톱에서는 우측 4열) */}
+            {/* 선택 날짜 상세 일정 패널 (모바일 하단 42%, 데스크톱 우측 4열) */}
             <div className="h-[42%] md:h-full md:col-span-4 lg:col-span-4 bg-white rounded-xl shadow-xs border border-slate-200 p-2 sm:p-3 flex flex-col min-h-0">
               
               {/* 패널 상단 헤더 */}
@@ -585,7 +624,6 @@
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {/* 담당자 필터 */}
                   <div className="flex bg-slate-100 p-0.5 rounded-md text-[10px] font-bold text-slate-600 gap-0.5">
                     <button onClick={() => setFilterAssignee('all')} className={`px-1.5 py-0.5 rounded ${filterAssignee === 'all' ? 'bg-white text-slate-900 shadow-2xs' : ''}`}>전체</button>
                     <button onClick={() => setFilterAssignee('wife')} className={`px-1.5 py-0.5 rounded ${filterAssignee === 'wife' ? 'bg-pink-500 text-white' : ''}`}>아내</button>
@@ -603,7 +641,7 @@
                 </div>
               </div>
 
-              {/* 일정 목록 (스크롤 가능) */}
+              {/* 일정 목록 */}
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5 min-h-0">
                 {selectedDateSchedules.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 p-2 border border-dashed border-slate-200 rounded-lg">
@@ -794,7 +832,7 @@
                       placeholder="메모를 입력하세요"
                       value={formMemo}
                       onChange={(e) => setFormMemo(e.target.value)}
-                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                     />
                   </div>
 
