@@ -574,6 +574,7 @@
     // -------------------------------------------------------------
     const DB_KEY = 'couple_calendar_schedules_v3';
     const SHEET_URL_KEY = 'google_sheet_webapp_url';
+    const DELETED_KEY = 'couple_calendar_deleted_ids_v3';
 
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth() + 1;
@@ -581,6 +582,12 @@
     let currentFilter = 'all';
     let selectedAssignee = 'husband';
     let sheetUrl = (localStorage.getItem(SHEET_URL_KEY) || '').trim();
+    let lastLocalEditTime = 0; // 방금 사용자가 일정을 등록/수정/삭제한 시간 (덮어쓰기 방지)
+    let deletedScheduleIds = new Set();
+    try {
+      const rawDel = localStorage.getItem(DELETED_KEY);
+      if (rawDel) deletedScheduleIds = new Set(JSON.parse(rawDel));
+    } catch(e) {}
 
     // 스마트폰 QR 연결시 URL 파라미터(?sheet=...)가 포함되어 있으면 자동 등록!
     try {
@@ -955,6 +962,13 @@
       });
     }
 
+    document.getElementById('formTitle').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btnSaveSchedule').click();
+      }
+    });
+
     document.getElementById('btnSaveSchedule').addEventListener('click', () => {
       const title = document.getElementById('formTitle').value.trim();
       if (!title) {
@@ -970,8 +984,11 @@
       const endTime = allDay ? '' : document.getElementById('formEndTime').value;
       const memo = document.getElementById('formMemo').value.trim();
 
+      lastLocalEditTime = Date.now(); // 덮어쓰기 방지 쿨다운 시작
+
       let nextData;
       if (editId) {
+        deletedScheduleIds.delete(editId);
         nextData = schedules.map(s => s.id === editId ? {
           ...s,
           title,
@@ -980,7 +997,8 @@
           startTime,
           endTime,
           assignee: selectedAssignee,
-          memo
+          memo,
+          updatedAt: Date.now()
         } : s);
         showToast('일정이 수정되었습니다! 💾', '✨');
       } else {
@@ -992,7 +1010,8 @@
           startTime,
           endTime,
           assignee: selectedAssignee,
-          memo
+          memo,
+          updatedAt: Date.now()
         };
         nextData = [newSch, ...schedules];
         showToast('새 일정이 등록되었습니다! 💖', '✨');
@@ -1006,6 +1025,12 @@
     document.getElementById('btnDeleteSchedule').addEventListener('click', () => {
       const editId = document.getElementById('formEditId').value;
       if (editId && confirm('이 일정을 삭제하시겠습니까?')) {
+        lastLocalEditTime = Date.now();
+        deletedScheduleIds.add(editId);
+        try {
+          localStorage.setItem(DELETED_KEY, JSON.stringify(Array.from(deletedScheduleIds).slice(-200)));
+        } catch(e) {}
+
         const nextData = schedules.filter(s => s.id !== editId);
         saveSchedules(nextData);
         closeModal();
@@ -1032,7 +1057,7 @@
       return { valid: true, msg: '올바른 URL 형식입니다.' };
     }
 
-    // 서버로 데이터 저장 (POST 우선 + 실패시 GET 쿼리 백업)
+    // 서버로 데이터 저장 (POST mode: 'no-cors' 로 CORS 차단 없이 확실히 전송)
     async function syncToSheet() {
       if (!sheetUrl) return;
       const payload = JSON.stringify({ action: 'sync', schedules });
@@ -1041,8 +1066,8 @@
       try {
         await fetch(sheetUrl, {
           method: 'POST',
-          mode: 'cors',
-          redirect: 'follow',
+          mode: 'no-cors',
+          cache: 'no-cache',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: payload
         });
@@ -1061,10 +1086,18 @@
       }
     }
 
-    // 구글 시트로부터 최신 일정 받아오기
+    // 구글 시트로부터 최신 일정 받아오기 (스마트 병합으로 입력 내용 절대 보호)
     async function syncFromSheet(isManual = false) {
       if (!sheetUrl) {
         if (isManual) openSettings();
+        return false;
+      }
+
+      const isModalOpen = !document.getElementById('scheduleModal').classList.contains('hidden');
+      const isRecentlyEdited = (Date.now() - lastLocalEditTime) < 30000;
+      
+      // 모달이 열려 있거나 방금 사용자가 일정을 등록/수정한 경우(30초 내)에는 자동 갱신 보류
+      if (!isManual && (isModalOpen || isRecentlyEdited)) {
         return false;
       }
 
@@ -1076,8 +1109,29 @@
         const data = await res.json();
         
         if (data && data.status === 'success' && Array.isArray(data.schedules)) {
-          // 구글 시트 최신 데이터를 로컬에 동기화
-          schedules = data.schedules;
+          const remoteSchedules = data.schedules;
+          
+          // [스마트 병합 (Smart Merge)]
+          // 1. 구글 시트에 있는 유효한 일정들을 맵에 등록 (사용자가 로컬에서 삭제한 것 제외)
+          const mergedMap = new Map();
+          remoteSchedules.forEach(s => {
+            if (s && s.id && !deletedScheduleIds.has(s.id)) {
+              mergedMap.set(s.id, s);
+            }
+          });
+
+          // 2. 로컬에 저장되어 있는 일정 보존 (구글 시트에 아직 반영 안 된 새 일정 살리기)
+          schedules.forEach(s => {
+            if (s && s.id && !deletedScheduleIds.has(s.id)) {
+              if (!mergedMap.has(s.id)) {
+                // 시트에 아직 안 들어간 새 일정이므로 로컬 데이터 보존!
+                mergedMap.set(s.id, s);
+              }
+            }
+          });
+
+          const nextMerged = Array.from(mergedMap.values());
+          schedules = nextMerged;
           localStorage.setItem(DB_KEY, JSON.stringify(schedules));
 
           renderCalendar();
@@ -1123,9 +1177,10 @@
       if (autoSyncTimer) clearInterval(autoSyncTimer);
       if (sheetUrl) {
         autoSyncTimer = setInterval(() => {
-          // 일정 입력 모달이 닫혀 있고 브라우저 화면이 켜져 있을 때만 자동 가져오기
+          // 일정 입력 모달이 닫혀 있고 최근 수정 직후가 아닐 때만 자동 동기화
           const isModalOpen = !document.getElementById('scheduleModal').classList.contains('hidden');
-          if (!isModalOpen && document.visibilityState === 'visible') {
+          const isRecentlyEdited = (Date.now() - lastLocalEditTime) < 30000;
+          if (!isModalOpen && !isRecentlyEdited && document.visibilityState === 'visible') {
             syncFromSheet(false);
           }
         }, 15000); // 15초마다 최신화
@@ -1335,17 +1390,17 @@
     document.getElementById('btnSync').addEventListener('click', () => syncFromSheet(true));
 
     // 화면이 다시 보일 때 (탭 전환, 스마트폰 잠금 해제, 다른 앱에서 복귀 시) 자동 최신화
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && sheetUrl) {
+    const handleScreenActive = () => {
+      const isModalOpen = !document.getElementById('scheduleModal').classList.contains('hidden');
+      const isRecentlyEdited = (Date.now() - lastLocalEditTime) < 30000;
+      if (sheetUrl && !isModalOpen && !isRecentlyEdited && document.visibilityState === 'visible') {
         syncFromSheet(false);
       }
-    });
-    window.addEventListener('focus', () => {
-      if (sheetUrl) syncFromSheet(false);
-    });
-    window.addEventListener('pageshow', () => {
-      if (sheetUrl) syncFromSheet(false);
-    });
+    };
+
+    document.addEventListener('visibilitychange', handleScreenActive);
+    window.addEventListener('focus', handleScreenActive);
+    window.addEventListener('pageshow', handleScreenActive);
 
     // 모바일 터치 스와이프 (월 이동)
     let touchStartX = 0;
